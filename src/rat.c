@@ -124,8 +124,6 @@ void rat_cap_create(rat_cap_t* cap, const rat_device_t* device, void* user_data,
 }
 
 int rat_cap_loop(rat_cap_t* cap, rat_cap_cb cb, uint32_t packet_count) {
-    (void)cb;
-
     uint32_t packets_processed = 0;
     uint8_t buf[cap->buffer_size];
     memset(buf, 0, cap->buffer_size);

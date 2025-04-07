@@ -24,15 +24,15 @@ typedef struct PACKED {
 } rat_ethernet_header_t;
 
 typedef struct PACKED {
-    unsigned short int ar_hrd;
-    unsigned short int ar_pro;
-    unsigned char ar_hln;
-    unsigned char ar_pln;
-    unsigned short int ar_op;
-    unsigned char __ar_sha[RAT_HA_ADDR_LEN];
-    unsigned char __ar_sip[4];
-    unsigned char __ar_tha[RAT_HA_ADDR_LEN];
-    unsigned char __ar_tip[4];
+    uint16_t hardware_type;
+    uint16_t protocol_type;
+    uint8_t  hardware_addr_len;
+    uint8_t  protocol_addr_len;
+    uint16_t operation;
+    uint8_t  sender_hardware_addr[RAT_HA_ADDR_LEN];
+    uint8_t  sender_ip_addr[4];
+    uint8_t  target_hardware_addr[RAT_HA_ADDR_LEN];
+    uint8_t  target_ip_addr[4];
 } rat_arp_header_t;
 
 typedef struct {
