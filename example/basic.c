@@ -1,4 +1,4 @@
-#include "../src/rat.h"
+#include <rat.h>
 
 void cap_cb(rat_packet_t* packet, void* data) {
     if (packet->eth) {
