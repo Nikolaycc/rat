@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -ggdb -Wall -Wextra -g -I./src
+CFLAGS = -DDEBUG -ggdb -Wall -Wextra -g -I./src
 LDFLAGS = -L. -lrat
 
 SRC_DIR = src

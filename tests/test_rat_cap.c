@@ -1,5 +1,10 @@
 #include "../src/rat.h"
 
+void cap_cb(rat_packet_t* packet, void* data) {
+    (void)packet;
+    (void)data;
+}
+
 int main(void) {
     rat_device_t devices[MAX_INTERFACES];
     int devices_size = rat_device_lookup(devices);
@@ -22,7 +27,9 @@ int main(void) {
     
     rat_cap_t cap = {0};
     rat_cap_create(&cap, &devices[device_idx], NULL, 0);
-
+    
+    rat_cap_loop(&cap, cap_cb, 2);
+    
     rat_cap_destroy(&cap);
     
     return 0;
