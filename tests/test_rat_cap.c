@@ -24,7 +24,9 @@ void cap_cb(rat_packet_t* packet, void* data) {
     }
 }
 
-int main(void) {
+int main(int argc, char** argv) {
+    rat_require_sudo_privileges(argv[0]);
+    
     rat_device_t devices[MAX_INTERFACES];
     int devices_size = rat_device_lookup(devices);
     if (devices_size == 0) {

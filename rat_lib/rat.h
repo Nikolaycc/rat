@@ -15,6 +15,7 @@
 #include <net/ethernet.h>
 
 #include "rat_packets.h"
+#include "rat_utils.h"
 
 #define MAX_INTERFACES 32
 
