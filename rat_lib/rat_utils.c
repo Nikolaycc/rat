@@ -1,4 +1,4 @@
-#include "rat_utils.h"
+#include <rat_utils.h>
 
 void rat_require_sudo_privileges(const char* program_path) {
     if (geteuid() != 0) {

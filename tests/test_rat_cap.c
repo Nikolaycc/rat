@@ -1,4 +1,4 @@
-#include "../rat_lib/rat.h"
+#include <rat.h>
 
 void cap_cb(rat_packet_t* packet, void* data) {
     (void)data;

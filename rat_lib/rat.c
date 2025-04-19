@@ -1,4 +1,4 @@
-#include "rat.h"
+#include <rat.h>
 
 int rat_device_lookup(rat_device_t devices[MAX_INTERFACES]) {
     struct ifaddrs *ifaddr, *ifa;

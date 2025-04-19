@@ -1,4 +1,4 @@
-#include "rat_packets.h"
+#include <rat_packets.h>
 
 void __rat_packet_parse(rat_packet_t* packet, uint8_t header_type, size_t remaining) {
     uint8_t* current_data = packet->raw_data;
