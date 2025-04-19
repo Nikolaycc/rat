@@ -7,47 +7,47 @@ Basic network packet sniffer
 
 ## Building
 
+Dependencies
+
+* meson (build system)
+* ninja
+* libreadline-dev (for CLI)
+
 ```bash
  git clone https://github.com/nikolaycc/rat.git
  cd rat
- make
+ 
+ meson setup build
+ cd build
+ ninja
 ```
 
-## Debug Build
+## Command Line Interface
 
 ```bash
- make DEBUG=1
+$ ./rat_cli
+Welcome to RAT Sniffer CLI. Type 'help' for commands.
+rat> list
+Available interfaces:
+0: eth0 (Ethernet interface)
+1: wlan0 (Wireless interface)
+rat> start 0
+Started sniffing on eth0
+[Packet display appears here]
+rat> stop
+Stopped sniffing
+rat> exit
 ```
 
-## Usage
+## Usage (rat_lib)
 
 Basic Example
 
 ```c
-#include "rat.h"
+#include <rat.h>
 
-void cap_cb(rat_packet_t* packet, void* data) {
-    (void)data;
-
-    if (packet->eth) {
-	// ....
-    }
-
-    if (packet->arp) {
-	// ....
-    }
-
-    if (packet->ip) {
-	// ....
-    }
-
-    if (packet->tcp) {
-	// ....
-    }
-
-    if (packet->udp) {
-	// ....
-    }
+void packet_handler(rat_packet_t* packet, void* data) {
+	// Process packet here
 }
 
 int main(void) {
