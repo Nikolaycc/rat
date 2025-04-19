@@ -9,6 +9,10 @@
 
 #include <rat.h>
 
+#ifndef RAT_VERSION
+#define RAT_VERSION "unknown"
+#endif
+
 const char HISTORY_NAME[] = ".rat_history";
 char history_path[1024];
 
@@ -17,6 +21,7 @@ typedef struct {
     rat_device_t devices[MAX_INTERFACES];
     int devices_size;
     int running;
+    int selected_idx;
 } sniffer_state_t;
 
 sniffer_state_t sniffer = {0};
@@ -57,6 +62,8 @@ void start_sniffing(int device_idx) {
         return;
     }
 
+    sniffer.selected_idx = device_idx;
+    
     rat_cap_create(&sniffer.cap, &sniffer.devices[device_idx], NULL, 0);
 
     sniffer.running = 1;
@@ -69,6 +76,8 @@ void stop_sniffing() {
         return;
     }
 
+    sniffer.selected_idx = -1;
+    
     rat_cap_destroy(&sniffer.cap);
     sniffer.running = 0;
     printf("Stopped sniffing\n");
@@ -109,9 +118,10 @@ void process_command(char* input) {
 
 int main(int argc, char** argv) {
     rat_require_sudo_privileges(argv[0]);
-    
-    printf("Welcome to RAT Sniffer CLI. Type 'help' for commands.\n");
 
+    sniffer.selected_idx = -1;
+    
+    printf("Welcome to RAT CLI %s. Type 'help' for commands.\n", RAT_VERSION);
     // Setup history
     char* home_path = getenv("HOME");
     assert(home_path != NULL);
@@ -127,8 +137,10 @@ int main(int argc, char** argv) {
 
     char* input;
     while (1) {
-        input = readline("rat> ");
-        
+	char in[120] = "rat> ";
+	if (sniffer.selected_idx >= 0) snprintf(in, sizeof(in), "rat[sniffing %s]> ", sniffer.devices[sniffer.selected_idx].name);
+        input = readline(in);
+
         if (!input || strcmp(input, "exit") == 0) {
             free(input);
             break;
