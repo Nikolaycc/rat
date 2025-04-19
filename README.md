@@ -1,6 +1,8 @@
-# Rat
+# 🐀 Rat
 
-Basic network packet sniffer
+A nimble network sniffer that scurries through your traffic
+
+Rat is a lightweight packet sniffing library and CLI tool written in C, designed to help you analyze network traffic with the stealth and precision of its namesake.
 
 > [!WARNING]
 > This library is unfinished. Keep your expectations low.
@@ -11,7 +13,7 @@ Dependencies
 
 * meson (build system)
 * ninja
-* libreadline-dev (for CLI)
+* readline (for CLI)
 
 ```bash
  git clone https://github.com/nikolaycc/rat.git
