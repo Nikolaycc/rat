@@ -41,9 +41,9 @@ Stopped sniffing
 rat> exit
 ```
 
-## Usage (rat_lib)
+## Usage (rat)
 
-Basic Example
+Basic Example in C
 
 ```c
 #include <rat.h>
@@ -74,6 +74,24 @@ int main(void) {
     rat_cap_destroy(&cap);
     
     return 0;
+}
+```
+
+Basic example in rust
+
+```rs
+extern crate Rat;
+
+use Rat::RatCap;
+    
+fn main() -> Result<(), String> {
+    let rat = RatCap::new()?;
+
+    for packet in rat.take(5) {
+	println!("Captured packet length: {}", packet.length);
+    }
+    
+    Ok(())
 }
 ```
 
