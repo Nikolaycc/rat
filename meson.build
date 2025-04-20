@@ -19,5 +19,6 @@ rat_rs = static_library('Rat', 'rat_rs/lib.rs', link_with : rat_lib, rust_crate_
 executable('test_rat_cap', 'tests/test_rat_cap.c', link_with : rat_lib, include_directories : incdir)
 executable('test_explore', 'tests/test_explore.c')
 executable('test_rat_rust', 'tests/test_rat_rust.rs', link_with : rat_rs)
+executable('test_rat_rust_iter', 'tests/test_rat_rust_iter.rs', link_with : rat_rs)
 
 # test('test_rat_cap', test_rat_cap)

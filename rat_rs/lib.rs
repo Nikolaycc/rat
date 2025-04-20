@@ -1,140 +1,113 @@
-use std::ffi;
+#![allow(non_snake_case)]
 
-pub const MAX_INTERFACES: usize = 23;
+pub mod binding;
 
-type TimeT = i64;
-type SusecondsT = i64;
+use std::ffi::c_void;
+use std::mem::zeroed;
+use binding as ratc;
 
-#[repr(C)]
-pub struct TimeVal {
-    tv_sec: TimeT,
-    tv_usec: SusecondsT,
-}
-
-pub mod packets {
-    pub const RAT_HA_ADDR_LEN: usize = 6;
-
-    #[repr(C, packed)]
-    #[derive(Debug, Copy, Clone)]
-    pub struct RatHardwareAddr {
-        pub octet: [u8; RAT_HA_ADDR_LEN],
-    }
-
-    #[repr(C, packed)]
-    #[derive(Debug, Copy, Clone)]
-    pub struct RatEthernetHeader {
-        pub dhost: [u8; RAT_HA_ADDR_LEN],
-        pub shost: [u8; RAT_HA_ADDR_LEN],
-        pub ether_type: u16,
-    }
-
-    #[repr(C, packed)]
-    #[derive(Debug, Copy, Clone)]
-    pub struct RatArpHeader {
-        pub hardware_type: u16,
-        pub protocol_type: u16,
-        pub hardware_addr_len: u8,
-        pub protocol_addr_len: u8,
-        pub operation: u16,
-        pub sender_hardware_addr: [u8; RAT_HA_ADDR_LEN],
-        pub sender_ip_addr: [u8; 4],
-        pub target_hardware_addr: [u8; RAT_HA_ADDR_LEN],
-        pub target_ip_addr: [u8; 4],
-    }
-
-    #[repr(C, packed)]
-    #[derive(Debug, Copy, Clone)]
-    pub struct RatIpHeader {
-        pub version_ihl: u8,
-        pub tos: u8,
-        pub total_length: u16,
-        pub id: u16,
-        pub flags_fragment: u16,
-        pub ttl: u8,
-        pub protocol: u8,
-        pub checksum: u16,
-        pub src_addr: u32,
-        pub dst_addr: u32,
-    }
-
-    #[repr(C, packed)]
-    #[derive(Debug, Copy, Clone)]
-    pub struct RatTcpHeader {
-        pub src_port: u16,
-        pub dst_port: u16,
-        pub seq_num: u32,
-        pub ack_num: u32,
-        pub data_offset_reserved: u8,
-        pub flags: u8,
-        pub window_size: u16,
-        pub checksum: u16,
-        pub urgent_ptr: u16,
-    }
-
-    #[repr(C, packed)]
-    #[derive(Debug, Copy, Clone)]
-    pub struct RatUdpHeader {
-        pub src_port: u16,
-        pub dst_port: u16,
-        pub length: u16,
-        pub checksum: u16,
-    }
-
-    #[repr(C)]
-    pub struct RatPacket {
-        pub raw_data: *mut u8,
-        pub length: usize,
-        pub timestamp: crate::TimeVal,
-        
-        pub eth: *mut RatEthernetHeader,
-        pub arp: *mut RatArpHeader,
-        pub ip: *mut RatIpHeader,
-        pub tcp: *mut RatTcpHeader,
-        pub udp: *mut RatUdpHeader,
-        
-        pub payload: *mut u8,
-        pub payload_length: usize,
-    }
-
-    extern "C" {
-        #[link_name="__rat_packet_parse"]
-        pub fn packet_parse(packet: *mut RatPacket, header_type: u8, remaining: usize);
-    }
-}
-
-#[repr(C)]
-pub struct RatDevice {
-    name: [u8; 16],
-    mtu: u32,
-}
-
-pub type RatDeviceT = RatDevice;
-pub type RatPacketT = packets::RatPacket;
-
-#[repr(C)]
 pub struct RatCap {
-    sock_fd: i32,
-    device: RatDeviceT,
-    timeout: u32,
-    buffer_size: usize,
-    user_data: *mut ffi::c_void,
+    pub device: ratc::RatDevice,
+    cap: ratc::RatCap,
+    current_packet: Option<ratc::RatPacketT>,
 }
 
-pub type RatCapCb = unsafe extern "C" fn(packet: *mut RatPacketT, data: *mut ffi::c_void);
+impl RatCap {
+    pub fn new() -> Result<Self, String> {
+        let mut devices = [ratc::RatDevice {
+            name: [0; 16],
+            mtu: 0,
+        }; ratc::MAX_INTERFACES];
 
-extern "C" {
-    #[link_name="rat_device_lookup"]
-    pub fn device_lookup(devices: *mut RatDevice)-> i32;
-    
-    #[link_name="rat_device_pick"]
-    pub fn device_pick(devices: *mut RatDevice, devices_len: usize) -> i32;
-    
-    #[link_name="rat_cap_create"]
-    pub fn cap_create(cap: *mut RatCap, device: *const RatDevice, user_data: *mut ffi::c_void, timeout: u32);
-    
-    #[link_name="rat_cap_loop"]
-    pub fn cap_loop(cap: *mut RatCap, cb: RatCapCb, packet_count: u32) -> i32;
-    
-    #[link_name="rat_cap_destroy"]
-    pub fn cap_destroy(cap: *mut RatCap);
+        let found = unsafe { ratc::device_lookup(devices.as_mut_ptr()) };
+        if found <= 0 {
+            return Err("No interfaces found.".into());
+        }
+
+        let picked = unsafe { ratc::device_pick(devices.as_mut_ptr(), found as usize) };
+        if picked < 0 {
+            return Err("Failed to pick interface.".into());
+        }
+
+        let mut cap: ratc::RatCap = unsafe { zeroed() };
+        let mut current_packet: Option<ratc::RatPacketT> = None;
+
+        let device = &devices[picked as usize];
+
+        unsafe {
+            ratc::cap_create(
+                &mut cap as *mut _,
+                device as *const _,
+                &mut current_packet as *mut _ as *mut c_void,
+                0,
+            );
+        }
+
+        Ok(Self { device: *device, cap, current_packet })
+    }
+
+    pub fn from(device_name: &str) -> Result<Self, String> {
+        let mut devices = [ratc::RatDevice {
+            name: [0; 16],
+            mtu: 0,
+        }; ratc::MAX_INTERFACES];
+
+        let found = unsafe { ratc::device_lookup(devices.as_mut_ptr()) };
+        if found <= 0 {
+            return Err("No interfaces found.".into());
+        }
+
+        let target = devices
+            .iter()
+            .take(found as usize)
+            .position(|dev| {
+                let cstr = unsafe {
+                    std::ffi::CStr::from_ptr(dev.name.as_ptr() as *const i8)
+                };
+                cstr.to_str().map(|s| s == device_name).unwrap_or(false)
+            })
+            .ok_or("Device not found by name")?;
+
+        let mut cap: ratc::RatCap = unsafe { zeroed() };
+        let mut current_packet: Option<ratc::RatPacketT> = None;
+
+        let device = &devices[target];
+
+        unsafe {
+            ratc::cap_create(
+                &mut cap as *mut _,
+                device as *const _,
+                &mut current_packet as *mut _ as *mut c_void,
+                0,
+            );
+        }
+
+        Ok(Self { device: *device, cap, current_packet })
+    }
+
+    pub fn capture_one(&mut self) -> Option<ratc::RatPacketT> {
+	let mut packet: ratc::RatPacketT = unsafe { zeroed() };
+	
+        unsafe {
+            ratc::cap_loop_w(&mut self.cap as *mut _, &mut packet as *mut ratc::RatPacketT, 1);
+        }
+
+	Some(packet)
+    }
+}
+
+impl Iterator for RatCap {
+    type Item = ratc::RatPacketT;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.capture_one()
+    }
+}
+
+impl Drop for RatCap {
+    fn drop(&mut self) {
+        unsafe {
+            ratc::cap_destroy(&mut self.cap as *mut _);
+        }
+    }
 }
