@@ -154,7 +154,8 @@ int main(int argc, char** argv) {
         free(input);
         
         if (sniffer.running) {
-            rat_cap_loop(&sniffer.cap, cap_cb, 1);
+	    rat_packet_t packet = {0};
+            rat_cap_loop_w(&sniffer.cap, &packet, 1);
         }
     }
     
