@@ -1,6 +1,7 @@
 #![allow(non_snake_case)]
 
 use std::ffi;
+use std::fmt;
 
 pub const MAX_INTERFACES: usize = 23;
 
@@ -12,6 +13,29 @@ type SusecondsT = i64;
 pub struct TimeVal {
     tv_sec: TimeT,
     tv_usec: SusecondsT,
+}
+
+impl fmt::Display for TimeVal {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        const SECONDS_PER_MINUTE: u64 = 60;
+        const SECONDS_PER_HOUR: u64 = 3600;
+        const SECONDS_PER_DAY: u64 = 86400;
+
+        let total_secs = self.tv_sec as u64;
+        let micros = self.tv_usec as u64;
+
+        let seconds_today = total_secs % SECONDS_PER_DAY;
+
+        let hours = seconds_today / SECONDS_PER_HOUR;
+        let minutes = (seconds_today % SECONDS_PER_HOUR) / SECONDS_PER_MINUTE;
+        let seconds = seconds_today % SECONDS_PER_MINUTE;
+
+        write!(
+            f,
+            "{:02}:{:02}:{:02}.{:06}",
+            hours, minutes, seconds, micros
+        )
+    }
 }
 
 pub mod packets {

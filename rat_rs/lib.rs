@@ -1,15 +1,15 @@
 #![allow(non_snake_case)]
 
 pub mod binding;
+pub mod packets;
 
-use std::ffi::c_void;
 use std::mem::zeroed;
+use std::ptr;
 use binding as ratc;
 
 pub struct RatCap {
     pub device: ratc::RatDevice,
     cap: ratc::RatCap,
-    current_packet: Option<ratc::RatPacketT>,
 }
 
 impl RatCap {
@@ -30,20 +30,19 @@ impl RatCap {
         }
 
         let mut cap: ratc::RatCap = unsafe { zeroed() };
-        let mut current_packet: Option<ratc::RatPacketT> = None;
-
+        
         let device = &devices[picked as usize];
 
         unsafe {
             ratc::cap_create(
                 &mut cap as *mut _,
                 device as *const _,
-                &mut current_packet as *mut _ as *mut c_void,
-                0,
+		ptr::null_mut(),
+		0,
             );
         }
 
-        Ok(Self { device: *device, cap, current_packet })
+        Ok(Self { device: *device, cap })
     }
 
     pub fn from(device_name: &str) -> Result<Self, String> {
@@ -69,20 +68,18 @@ impl RatCap {
             .ok_or("Device not found by name")?;
 
         let mut cap: ratc::RatCap = unsafe { zeroed() };
-        let mut current_packet: Option<ratc::RatPacketT> = None;
-
         let device = &devices[target];
 
         unsafe {
             ratc::cap_create(
                 &mut cap as *mut _,
                 device as *const _,
-                &mut current_packet as *mut _ as *mut c_void,
-                0,
+		ptr::null_mut(),
+		0,
             );
         }
 
-        Ok(Self { device: *device, cap, current_packet })
+        Ok(Self { device: *device, cap })
     }
 
     pub fn capture_one(&mut self) -> Option<ratc::RatPacketT> {

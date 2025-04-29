@@ -5,7 +5,7 @@ rat_version = '0.1.0'
 incdir = include_directories('include')
 
 # rat_lib
-add_project_arguments('-DDEBUG', language: 'c') # DEBUG ENABLE
+# add_project_arguments('-DDEBUG', language: 'c') # DEBUG ENABLE
 rat_lib = static_library('rat', 'rat_lib/rat.c', 'rat_lib/rat_packets.c', 'rat_lib/rat_utils.c', include_directories : incdir)
 
 # rat_cli
@@ -20,5 +20,6 @@ executable('test_rat_cap', 'tests/test_rat_cap.c', link_with : rat_lib, include_
 executable('test_explore', 'tests/test_explore.c')
 executable('test_rat_rust', 'tests/test_rat_rust.rs', link_with : rat_rs)
 executable('test_rat_rust_iter', 'tests/test_rat_rust_iter.rs', link_with : rat_rs)
+executable('test_rat_rust_packets', 'tests/test_rat_rust_packets.rs', link_with : rat_rs)
 
 # test('test_rat_cap', test_rat_cap)
