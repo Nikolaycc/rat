@@ -25,7 +25,6 @@ fn main() -> Result<(), String> {
             }
         }
 
-        // Access payload
         println!("Payload ({} bytes)", packet.payload().len());
     }
     
