@@ -124,3 +124,4 @@ Contributions are welcome! Please open an issue or submit a pull request.
 *   Add ICMP support
 *   Add BPF filter support
 *   Add Windows compatibility
+*   Add BSD compatibility
