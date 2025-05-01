@@ -1,0 +1,7 @@
+[package]
+name = "rat_gui"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+gpui = { git = "https://github.com/zed-industries/zed" }

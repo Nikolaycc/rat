@@ -1,1 +1,2 @@
 option('allbuild', type : 'boolean', value : true)
+option('debugc', type : 'boolean', value : true)

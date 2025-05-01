@@ -86,29 +86,29 @@ int rat_device_pick(rat_device_t devices[], size_t devices_len) {
     return best_index;
 }
 
-void rat_cap_create(rat_cap_t* cap, const rat_device_t* device, void* user_data, uint32_t timeout) {
+int rat_cap_create(rat_cap_t* cap, const rat_device_t* device, void* user_data, uint32_t timeout) {
     cap->user_data = user_data;
     
-    cap->sock_fd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
-    if (cap->sock_fd < 0) {
+    cap->fd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
+    if (cap->fd < 0) {
         perror("Rat Socket Error");
-        exit(1);
+        return -1;
     }
     
     if (device->name[0] != '\0' || device->mtu > 0) {
         memcpy(&cap->device, device, sizeof(rat_device_t));
         cap->buffer_size = device->mtu;
         
-        int result = setsockopt(cap->sock_fd, SOL_SOCKET, SO_BINDTODEVICE, 
+        int result = setsockopt(cap->fd, SOL_SOCKET, SO_BINDTODEVICE, 
                                device->name, strlen(device->name));
         if (result != 0) {
             perror("Rat Setsockopt SO_BINDTODEVICE Error");
-            exit(2);
+            return -2;
         }
     } else {
         fprintf(stderr, "Rat Device Error: device not provided\n");
-        close(cap->sock_fd);
-        exit(3);
+        close(cap->fd);
+        return -3;
     }
     
     cap->timeout = timeout;
@@ -116,11 +116,13 @@ void rat_cap_create(rat_cap_t* cap, const rat_device_t* device, void* user_data,
         struct timeval tv;
         tv.tv_sec = timeout / 1000;
         tv.tv_usec = (timeout % 1000) * 1000;
-        if (setsockopt(cap->sock_fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) == -1) {
+        if (setsockopt(cap->fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) == -1) {
             perror("Rat Setsockopt SO_RCVTIMEO Error");
-            exit(4);
+            return -4;
         }
     }
+
+    return 0;
 }
 
 int rat_cap_loop_w(rat_cap_t* cap, rat_packet_t* pk, uint32_t packet_count) {
@@ -130,7 +132,7 @@ int rat_cap_loop_w(rat_cap_t* cap, rat_packet_t* pk, uint32_t packet_count) {
 
     while (packet_count <= 0 || packets_processed < packet_count) {
 	memset(buf, 0, sizeof(buf));
-	ssize_t packet_size = recvfrom(cap->sock_fd, buf, sizeof(buf), 0, NULL, NULL);
+	ssize_t packet_size = recvfrom(cap->fd, buf, sizeof(buf), 0, NULL, NULL);
 
 	if (packet_size < 0) {
 	    if (errno == EAGAIN || errno == EWOULDBLOCK) {
@@ -163,7 +165,7 @@ int rat_cap_loop(rat_cap_t* cap, rat_cap_cb cb, uint32_t packet_count) {
 
     while (packet_count <= 0 || packets_processed < packet_count) {
 	memset(buf, 0, sizeof(buf));
-	ssize_t packet_size = recvfrom(cap->sock_fd, buf, sizeof(buf), 0, NULL, NULL);
+	ssize_t packet_size = recvfrom(cap->fd, buf, sizeof(buf), 0, NULL, NULL);
 
 	if (packet_size < 0) {
 	    if (errno == EAGAIN || errno == EWOULDBLOCK) {
@@ -189,6 +191,6 @@ int rat_cap_loop(rat_cap_t* cap, rat_cap_cb cb, uint32_t packet_count) {
 }
 
 void rat_cap_destroy(rat_cap_t* cap) {
-    close(cap->sock_fd);
+    close(cap->fd);
     cap->buffer_size = 0;
 }

@@ -3,7 +3,16 @@ rat_version = '0.1.0'
 
 # ---  C  ---
 
-# add_global_arguments('-DDEBUG', language : 'c')
+debugc = get_option('debugc')
+
+if debugc 
+  add_project_arguments('-DDEBUG', language: 'c')
+endif
+
+system = host_machine.system()
+if system == 'windows'
+  error('Unsupported platform')
+endif
 
 rat_lib_inc = include_directories('c_src/rat_lib')
 rat_lib_src = [

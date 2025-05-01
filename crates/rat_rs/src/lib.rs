@@ -7,6 +7,7 @@ use std::mem::zeroed;
 use std::ptr;
 use binding as ratc;
 
+#[derive(Debug)]
 pub struct RatCap {
     pub device: ratc::RatDevice,
     cap: ratc::RatCap,
@@ -33,15 +34,18 @@ impl RatCap {
         
         let device = &devices[picked as usize];
 
-        unsafe {
+        let res = unsafe {
             ratc::cap_create(
                 &mut cap as *mut _,
                 device as *const _,
 		ptr::null_mut(),
 		0,
-            );
-        }
-
+            )
+        };
+	if res < 0 {
+	    return Err("Failed to create capture.".into());
+	}
+		
         Ok(Self { device: *device, cap })
     }
 
@@ -70,15 +74,18 @@ impl RatCap {
         let mut cap: ratc::RatCap = unsafe { zeroed() };
         let device = &devices[target];
 
-        unsafe {
+	let res = unsafe {
             ratc::cap_create(
                 &mut cap as *mut _,
                 device as *const _,
 		ptr::null_mut(),
 		0,
-            );
-        }
-
+            )
+        };
+	if res < 0 {
+	    return Err("Failed to create capture.".into());
+	}
+	
         Ok(Self { device: *device, cap })
     }
 

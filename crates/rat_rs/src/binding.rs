@@ -143,7 +143,7 @@ pub type RatPacketT = packets::RatPacket;
 #[repr(C)]
 #[derive(Debug)]
 pub struct RatCap {
-    sock_fd: i32,
+    fd: i32,
     device: RatDeviceT,
     timeout: u32,
     buffer_size: usize,
@@ -160,7 +160,7 @@ extern "C" {
     pub fn device_pick(devices: *mut RatDevice, devices_len: usize) -> i32;
     
     #[link_name="rat_cap_create"]
-    pub fn cap_create(cap: *mut RatCap, device: *const RatDevice, user_data: *mut ffi::c_void, timeout: u32);
+    pub fn cap_create(cap: *mut RatCap, device: *const RatDevice, user_data: *mut ffi::c_void, timeout: u32) -> i32;
     
     #[link_name="rat_cap_loop"]
     pub fn cap_loop(cap: *mut RatCap, cb: RatCapCb, packet_count: u32) -> i32;
