@@ -42,13 +42,13 @@ void __rat_packet_parse(rat_packet_t* packet, uint8_t header_type, size_t remain
             #if defined(DEBUG)
             printf("DEBUG: Ethernet type: 0x%04x\n", ether_type);
             printf("DEBUG: Source MAC: %02x:%02x:%02x:%02x:%02x:%02x\n",
-                   packet->eth->ether_shost[0], packet->eth->ether_shost[1],
-                   packet->eth->ether_shost[2], packet->eth->ether_shost[3], 
-                   packet->eth->ether_shost[4], packet->eth->ether_shost[5]);
+            packet->eth->ether_shost[0], packet->eth->ether_shost[1],
+            packet->eth->ether_shost[2], packet->eth->ether_shost[3], 
+            packet->eth->ether_shost[4], packet->eth->ether_shost[5]);
             printf("DEBUG: Dest MAC: %02x:%02x:%02x:%02x:%02x:%02x\n",
-                   packet->eth->ether_dhost[0], packet->eth->ether_dhost[1],
-                   packet->eth->ether_dhost[2], packet->eth->ether_dhost[3], 
-                   packet->eth->ether_dhost[4], packet->eth->ether_dhost[5]);
+            packet->eth->ether_dhost[0], packet->eth->ether_dhost[1],
+            packet->eth->ether_dhost[2], packet->eth->ether_dhost[3], 
+            packet->eth->ether_dhost[4], packet->eth->ether_dhost[5]);
             #endif
             
             if (ether_type == 0x0800) {
@@ -84,11 +84,11 @@ void __rat_packet_parse(rat_packet_t* packet, uint8_t header_type, size_t remain
             #if defined(DEBUG)
             printf("DEBUG: ARP Operation: %d\n", ntohs(packet->arp->operation));
             printf("DEBUG: Sender IP: %d.%d.%d.%d\n",
-                   packet->arp->sender_ip_addr[0], packet->arp->sender_ip_addr[1],
-                   packet->arp->sender_ip_addr[2], packet->arp->sender_ip_addr[3]);
+            packet->arp->sender_ip_addr[0], packet->arp->sender_ip_addr[1],
+            packet->arp->sender_ip_addr[2], packet->arp->sender_ip_addr[3]);
             printf("DEBUG: Target IP: %d.%d.%d.%d\n",
-                   packet->arp->target_ip_addr[0], packet->arp->target_ip_addr[1],
-                   packet->arp->target_ip_addr[2], packet->arp->target_ip_addr[3]);
+            packet->arp->target_ip_addr[0], packet->arp->target_ip_addr[1],
+            packet->arp->target_ip_addr[2], packet->arp->target_ip_addr[3]);
             #endif
             
             __rat_packet_parse(packet, RAT_DONE, remaining);
@@ -113,13 +113,13 @@ void __rat_packet_parse(rat_packet_t* packet, uint8_t header_type, size_t remain
             
             #if defined(DEBUG)
             printf("DEBUG: IP version: %d, header length: %ld bytes\n", 
-                   (packet->ip->version_ihl >> 4), ip_header_size);
+            (packet->ip->version_ihl >> 4), ip_header_size);
             printf("DEBUG: Source IP: %d.%d.%d.%d\n",
-                   (packet->ip->src_addr >> 0) & 0xFF, (packet->ip->src_addr >> 8) & 0xFF,
-                   (packet->ip->src_addr >> 16) & 0xFF, (packet->ip->src_addr >> 24) & 0xFF);
+            (packet->ip->src_addr >> 0) & 0xFF, (packet->ip->src_addr >> 8) & 0xFF,
+            (packet->ip->src_addr >> 16) & 0xFF, (packet->ip->src_addr >> 24) & 0xFF);
             printf("DEBUG: Dest IP: %d.%d.%d.%d\n",
-                   (packet->ip->dst_addr >> 0) & 0xFF, (packet->ip->dst_addr >> 8) & 0xFF,
-                   (packet->ip->dst_addr >> 16) & 0xFF, (packet->ip->dst_addr >> 24) & 0xFF);
+            (packet->ip->dst_addr >> 0) & 0xFF, (packet->ip->dst_addr >> 8) & 0xFF,
+            (packet->ip->dst_addr >> 16) & 0xFF, (packet->ip->dst_addr >> 24) & 0xFF);
             printf("DEBUG: Protocol: %d\n", packet->ip->protocol);
             #endif
             

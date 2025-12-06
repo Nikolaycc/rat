@@ -137,8 +137,8 @@ int main(int argc, char** argv) {
 
     char* input;
     while (1) {
-	char in[120] = "rat> ";
-	if (sniffer.selected_idx >= 0) snprintf(in, sizeof(in), "rat[sniffing %s]> ", sniffer.devices[sniffer.selected_idx].name);
+		char in[120] = "rat> ";
+		if (sniffer.selected_idx >= 0) snprintf(in, sizeof(in), "rat[sniffing %s]> ", sniffer.devices[sniffer.selected_idx].name);
         input = readline(in);
 
         if (!input || strcmp(input, "exit") == 0) {
@@ -154,8 +154,7 @@ int main(int argc, char** argv) {
         free(input);
         
         if (sniffer.running) {
-	    rat_packet_t packet = {0};
-            rat_cap_loop_w(&sniffer.cap, &packet, 1);
+            rat_cap_loop(&sniffer.cap, cap_cb, 1);
         }
     }
     

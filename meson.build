@@ -34,7 +34,7 @@ if allbuild
   # --- TESTS ---
 
   executable('test_rat_cap', 'tests/test_rat_cap.c', link_with : rat_lib, include_directories : rat_lib_inc)
-  executable('test_explore', 'tests/test_explore.c')
+  # executable('test_explore', 'tests/test_explore.c')
   executable('test_rat_rust', 'tests/test_rat_rust.rs', link_with : rat_rs)
   executable('test_rat_rust_iter', 'tests/test_rat_rust_iter.rs', link_with : rat_rs)
   executable('test_rat_rust_packets', 'tests/test_rat_rust_packets.rs', link_with : rat_rs)
