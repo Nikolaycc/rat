@@ -185,7 +185,46 @@ int rat_cap_create(rat_cap_t* cap, const rat_device_t* device, void* user_data, 
 	
 }
 
-int rat_cap_loop_w(rat_cap_t* cap, rat_packet_t* pk, uint32_t packet_count) {
+#if defined(RAT_BSD) || defined(RAT_MACOS)
+int __rat_cap_loop_w_bsd_macos(rat_cap_t* cap, rat_packet_t* pk, uint32_t packet_count) {
+	uint32_t packets_processed = 0;
+	uint8_t buf[cap->buffer_size];
+	
+    while (packet_count <= 0 || packets_processed < packet_count) {
+		memset(buf, 0, sizeof(buf));
+
+		ssize_t n = read(cap->fd, buf, cap->buffer_size);
+        if (n < 0) {
+            perror("Rat read Error");
+            break;
+        }
+        
+        u_char *ptr = buf;
+		while (ptr < buf + n) {
+            struct bpf_hdr *bh = (struct bpf_hdr *)ptr;
+            
+			rat_packet_t packet = {0};
+			packet.raw_data = ptr + bh->bh_hdrlen;
+			packet.length = bh->bh_datalen;
+
+			gettimeofday(&packet.timestamp, NULL);
+			rat_packet_parse(&packet);
+
+			*pk = packet;
+			
+			packets_processed++;
+			
+            // Move to next packet (BPF_WORDALIGN rounds up to word boundary)
+            ptr += BPF_WORDALIGN(bh->bh_hdrlen + bh->bh_caplen);
+        }
+    }
+
+    return 0;
+}
+#endif
+
+#if defined(RAT_LINUX)
+int __rat_cap_loop_w_linux(rat_cap_t* cap, rat_packet_t* pk, uint32_t packet_count) {
     uint32_t packets_processed = 0;
     uint8_t buf[cap->buffer_size];
     memset(buf, 0, cap->buffer_size);
@@ -215,6 +254,17 @@ int rat_cap_loop_w(rat_cap_t* cap, rat_packet_t* pk, uint32_t packet_count) {
     }
 
     return 0;
+}
+#endif
+
+int rat_cap_loop_w(rat_cap_t* cap, rat_packet_t* pk, uint32_t packet_count) {
+	#if defined(RAT_BSD) || defined(RAT_MACOS)
+	return __rat_cap_loop_w_bsd_macos(cap, pk, packet_count);
+	#elif defined(RAT_MACOS)
+	return __rat_cap_loop_w_linux(cap, pk, packet_count);
+	#else
+	#error "Unsupported platform"
+	#endif
 }
 
 #if defined(RAT_BSD) || defined(RAT_MACOS)
