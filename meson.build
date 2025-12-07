@@ -16,8 +16,16 @@ endif
 
 rat_lib_inc = include_directories('c_src/rat_lib')
 rat_lib_src = [
-  'c_src/rat_lib/rat.c', 'c_src/rat_lib/rat_packets.c', 'c_src/rat_lib/rat_utils.c'
+  'c_src/rat_lib/rat_core.c', 'c_src/rat_lib/rat_packets.c', 'c_src/rat_lib/rat_utils.c'
 ]
+
+if system in ['freebsd', 'openbsd', 'netbsd', 'dragonfly']
+  rat_lib_src += ['c_src/rat_lib/platforms/rat_bsd.c']
+elif system == 'linux'
+  rat_lib_src += ['c_src/rat_lib/platforms/rat_linux.c']
+elif system == 'darwin'
+  rat_lib_src += ['c_src/rat_lib/platforms/rat_bsd.c']
+endif
 
 rat_lib = static_library('rat', rat_lib_src, include_directories : rat_lib_inc, c_args: ['-fvisibility=hidden'])
 
