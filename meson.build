@@ -19,7 +19,7 @@ rat_lib_src = [
   'c_src/rat_lib/rat.c', 'c_src/rat_lib/rat_packets.c', 'c_src/rat_lib/rat_utils.c'
 ]
 
-rat_lib = static_library('rat', rat_lib_src, include_directories : rat_lib_inc)
+rat_lib = static_library('rat', rat_lib_src, include_directories : rat_lib_inc, c_args: ['-fvisibility=hidden'])
 
 allbuild = get_option('allbuild')
 

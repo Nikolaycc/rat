@@ -6,6 +6,8 @@
 #include <unistd.h>
 #include <string.h>
 
-void rat_require_sudo_privileges(const char* program_path);
+#define RATAPI __attribute__((visibility("default")))
+
+RATAPI void rat_require_sudo_privileges(const char* program_path);
 
 #endif

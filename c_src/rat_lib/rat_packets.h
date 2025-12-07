@@ -8,6 +8,8 @@
 
 #include <arpa/inet.h>
 
+#define RATAPI __attribute__((visibility("default")))
+
 #if defined(__GNUC__) || defined(__clang__)
 #define PACKED __attribute__((packed))
 #else
@@ -97,6 +99,6 @@ typedef struct {
     size_t   payload_length;
 } rat_packet_t;
 
-void __rat_packet_parse(rat_packet_t*, uint8_t, size_t);
+RATAPI void __rat_packet_parse(rat_packet_t*, uint8_t, size_t);
 
 #endif
