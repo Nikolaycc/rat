@@ -33,7 +33,9 @@ allbuild = get_option('allbuild')
 
 if allbuild
   readline_dep = dependency('readline', required : false)
-  rat_cli = executable('rat_cli', 'cli/rat_cli.c', c_args: '-DRAT_VERSION="v'+ rat_version +'"', link_with : rat_lib, dependencies : readline_dep, include_directories : rat_lib_inc, install : true)
+  if readline_dep.found()
+    executable('rat_cli', 'cli/rat_cli.c', c_args: '-DRAT_VERSION="v'+ rat_version +'"', link_with : rat_lib, dependencies : readline_dep, include_directories : rat_lib_inc, install : true)
+  endif
 
   # ---  RUST  ---
 
