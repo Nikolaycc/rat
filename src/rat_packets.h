@@ -99,6 +99,33 @@ typedef struct {
     size_t   payload_length;
 } rat_packet_t;
 
-RATAPI void __rat_packet_parse(rat_packet_t*, uint8_t, size_t);
+// TODO: make better data structure
+
+// typedef struct {
+// 	void* header;
+// 	uint8_t type;
+// } rat_header;
+
+// typedef struct {
+// 	rat_header* headers;
+// 	size_t count;
+// 	size_t capacity;
+// } rat_headers;
+
+// typedef struct {
+//     // packet info
+//     uint8_t* raw_data;
+//     size_t   length;
+//     struct   timeval timestamp;
+
+//     // headers
+// 	   rat_headers* hdrs;
+	
+//     // payload
+//     uint8_t* payload;
+//     size_t   payload_length;
+// } rat_packet_t;
+
+void __rat_packet_parse(rat_packet_t*, uint8_t, size_t);
 
 #endif

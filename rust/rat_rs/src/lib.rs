@@ -38,13 +38,13 @@ impl RatCap {
             ratc::cap_create(
                 &mut cap as *mut _,
                 device as *const _,
-		ptr::null_mut(),
-		0,
+				ptr::null_mut(),
+				0,
             )
         };
-	if res < 0 {
-	    return Err("Failed to create capture.".into());
-	}
+		if res < 0 {
+			return Err("Failed to create capture.".into());
+		}
 		
         Ok(Self { device: *device, cap })
     }
@@ -74,29 +74,29 @@ impl RatCap {
         let mut cap: ratc::RatCap = unsafe { zeroed() };
         let device = &devices[target];
 
-	let res = unsafe {
+		let res = unsafe {
             ratc::cap_create(
                 &mut cap as *mut _,
                 device as *const _,
-		ptr::null_mut(),
-		0,
+				ptr::null_mut(),
+				0,
             )
         };
-	if res < 0 {
-	    return Err("Failed to create capture.".into());
-	}
-	
+		if res < 0 {
+			return Err("Failed to create capture.".into());
+		}
+		
         Ok(Self { device: *device, cap })
     }
 
     pub fn capture_one(&mut self) -> Option<ratc::RatPacketT> {
-	let mut packet: ratc::RatPacketT = unsafe { zeroed() };
-	
+		let mut packet: ratc::RatPacketT = unsafe { zeroed() };
+		
         unsafe {
             ratc::cap_loop_w(&mut self.cap as *mut _, &mut packet as *mut ratc::RatPacketT, 1);
         }
 
-	Some(packet)
+		Some(packet)
     }
 }
 
