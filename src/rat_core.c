@@ -86,6 +86,35 @@ int rat_device_pick(rat_device_t devices[], size_t devices_len) {
     return best_index;
 }
 
+int rat_cap_loop_w(rat_cap_t* cap, rat_packet_t* pk, uint32_t packet_count) {
+	uint32_t packets_processed = 0;
+	uint8_t buf[cap->buffer_size];
+	
+    while (packet_count <= 0 || packets_processed < packet_count) {
+		rat_capture(cap, buf, pk, NULL);
+		packets_processed++;	
+    }
+
+    return 0;
+}
+
+int rat_cap_loop(rat_cap_t* cap, rat_cap_cb cb, uint32_t packet_count) {
+    uint32_t packets_processed = 0;
+    uint8_t buf[cap->buffer_size];
+
+    while (packet_count <= 0 || packets_processed < packet_count) {
+		memset(buf, 0, sizeof(buf));
+
+		rat_packet_t packet = {0};
+
+		rat_capture(cap, buf, &packet, cb);
+			
+		packets_processed++;
+    }
+
+    return 0;
+}
+
 void rat_cap_destroy(rat_cap_t* cap) {
     close(cap->fd);
     cap->buffer_size = 0;

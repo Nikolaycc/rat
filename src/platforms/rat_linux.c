@@ -39,66 +39,26 @@ int rat_cap_create(rat_cap_t* cap, const rat_device_t* device, void* user_data, 
     return 0;
 }
 
-int rat_cap_loop_w(rat_cap_t* cap, rat_packet_t* pk, uint32_t packet_count) {
-    uint32_t packets_processed = 0;
-    uint8_t buf[cap->buffer_size];
+int rat_capture(rat_cap_t* cap, uint8_t* buf, rat_packet_t* pk, rat_cap_cb cb) {
     memset(buf, 0, cap->buffer_size);
 
-    while (packet_count <= 0 || packets_processed < packet_count) {
-		memset(buf, 0, sizeof(buf));
-		ssize_t packet_size = recvfrom(cap->fd, buf, sizeof(buf), 0, NULL, NULL);
+	ssize_t packet_size = recvfrom(cap->fd, buf, sizeof(buf), 0, NULL, NULL);
 
-		if (packet_size < 0) {
-			if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                continue;
-            }
-            perror("Error receiving packet");
-            return -1;
-		}
+	if (packet_size < 0) {
+		if (errno == EAGAIN || errno == EWOULDBLOCK) {
+            continue;
+        }
+        perror("Error receiving packet");
+        return -1;
+	}
 
-		rat_packet_t packet = {0};
-        packet.raw_data = buf;
-        packet.length = packet_size;
+	packet->raw_data = buf;
+    packet->length = packet_size;
 
-        gettimeofday(&packet.timestamp, NULL);
-        rat_packet_parse(&packet);
-
-		*pk = packet;
-        
-        packets_processed++;
-    }
-
-    return 0;
-}
-
-int rat_cap_loop(rat_cap_t* cap, rat_cap_cb cb, uint32_t packet_count) {
-    uint32_t packets_processed = 0;
-    uint8_t buf[cap->buffer_size];
-    memset(buf, 0, cap->buffer_size);
-
-    while (packet_count <= 0 || packets_processed < packet_count) {
-		memset(buf, 0, sizeof(buf));
-		ssize_t packet_size = recvfrom(cap->fd, buf, sizeof(buf), 0, NULL, NULL);
-
-		if (packet_size < 0) {
-			if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                continue;
-            }
-            perror("Error receiving packet");
-            return -1;
-		}
-
-		rat_packet_t packet = {0};
-        packet.raw_data = buf;
-        packet.length = packet_size;
-
-        gettimeofday(&packet.timestamp, NULL);
-        
-        rat_packet_parse(&packet);
-        cb(&packet, cap->user_data);
-        
-        packets_processed++;
-    }
+	gettimeofday(&pk->timestamp, NULL);
+	rat_packet_parse(&(*pk));
+	
+	if (cb != NULL) cb(pk, cap->user_data);
 
     return 0;
 }

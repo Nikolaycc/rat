@@ -9,6 +9,12 @@ int rat_cap_create(rat_cap_t* cap, const rat_device_t* device, void* user_data, 
         return -1;
     }
 
+	int immediate = 1;
+	if (ioctl(cap->fd, BIOCIMMEDIATE, &immediate) < 0) {
+		perror("Rat ioctl BIOCIMMEDIATE Error");
+		return -6;
+	}
+
 	if (device->name[0] != '\0' || device->mtu > 0) {
 		uint32_t buflen;
 		
@@ -20,7 +26,7 @@ int rat_cap_create(rat_cap_t* cap, const rat_device_t* device, void* user_data, 
 		cap->buffer_size = buflen;
 		
 		struct ifreq ifr;
-		strncpy(ifr.ifr_name, device->name, IFNAMSIZ); // Replace "em0" with your interface
+		strncpy(ifr.ifr_name, device->name, IFNAMSIZ);
 		if (ioctl(cap->fd, BIOCSETIF, &ifr) == -1) {
 			perror("Rat ioctl BIOCSETIF Error");
 			return -2;
@@ -45,75 +51,29 @@ int rat_cap_create(rat_cap_t* cap, const rat_device_t* device, void* user_data, 
 	return 0;
 }
 
-int rat_cap_loop_w(rat_cap_t* cap, rat_packet_t* pk, uint32_t packet_count) {
-	uint32_t packets_processed = 0;
-	uint8_t buf[cap->buffer_size];
+int rat_capture(rat_cap_t* cap, uint8_t* buf, rat_packet_t* pk, rat_cap_cb cb) {
+	memset(buf, 0, sizeof(cap->buffer_size));
 	
-    while (packet_count <= 0 || packets_processed < packet_count) {
-		memset(buf, 0, sizeof(buf));
-
-		ssize_t n = read(cap->fd, buf, cap->buffer_size);
-        if (n < 0) {
-            perror("Rat read Error");
-            break;
-        }
-        
-        u_char *ptr = buf;
-		while (ptr < buf + n) {
-            struct bpf_hdr *bh = (struct bpf_hdr *)ptr;
-            
-			rat_packet_t packet = {0};
-			packet.raw_data = ptr + bh->bh_hdrlen;
-			packet.length = bh->bh_datalen;
-
-			gettimeofday(&packet.timestamp, NULL);
-			rat_packet_parse(&packet);
-
-			*pk = packet;
-			
-			packets_processed++;
-			
-            // Move to next packet (BPF_WORDALIGN rounds up to word boundary)
-            ptr += BPF_WORDALIGN(bh->bh_hdrlen + bh->bh_caplen);
-        }
+	ssize_t n = read(cap->fd, buf, cap->buffer_size);
+    if (n < 0) {
+        perror("Rat read Error");
+        return -1;
     }
+    
+    uint8_t *ptr = buf;
+	while (ptr < buf + n) {
+        struct bpf_hdr *bh = (struct bpf_hdr *)ptr;
 
-    return 0;
-}
+		pk->raw_data = ptr + bh->bh_hdrlen;
+		pk->length = bh->bh_datalen;
 
-int rat_cap_loop(rat_cap_t* cap, rat_cap_cb cb, uint32_t packet_count) {
-    uint32_t packets_processed = 0;
-    uint8_t buf[cap->buffer_size];
+		gettimeofday(&pk->timestamp, NULL);
+		rat_packet_parse(&(*pk));
 
-    while (packet_count <= 0 || packets_processed < packet_count) {
-		memset(buf, 0, sizeof(buf));
-
-		ssize_t n = read(cap->fd, buf, cap->buffer_size);
-        if (n < 0) {
-            perror("Rat read Error");
-            break;
-        }
-        
-        u_char *ptr = buf;
-        while (ptr < buf + n) {
-            struct bpf_hdr *bh = (struct bpf_hdr *)ptr;
-            
-			rat_packet_t packet = {0};
-			packet.raw_data = ptr + bh->bh_hdrlen;
-			packet.length = bh->bh_datalen;
-
-			gettimeofday(&packet.timestamp, NULL);
-			
-			rat_packet_parse(&packet);
-			cb(&packet, cap->user_data);
-			
-			packets_processed++;
-			
-            // Move to next packet (BPF_WORDALIGN rounds up to word boundary)
-            ptr += BPF_WORDALIGN(bh->bh_hdrlen + bh->bh_caplen);
-        }
-
+		if (cb != NULL) cb(pk, cap->user_data);
+		
+        ptr += BPF_WORDALIGN(bh->bh_hdrlen + bh->bh_caplen);
     }
-
+	
     return 0;
 }
