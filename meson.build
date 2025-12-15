@@ -1,5 +1,5 @@
-project('rat', ['c', 'rust'], version : '0.1.0')
-rat_version = '0.1.0'
+project('rat', ['c', 'rust'], version : '0.2.0', meson_version : '>=1.3.0')
+rat_version = '0.2.0'
 
 # ---  C  ---
 
@@ -27,19 +27,32 @@ elif system == 'darwin'
   rat_lib_src += ['src/platforms/rat_bsd.c']
 endif
 
-rat_lib = static_library('rat', rat_lib_src, include_directories : rat_lib_inc, c_args: ['-fvisibility=hidden'])
+rat_lib = static_library('rat', rat_lib_src,
+                         include_directories : rat_lib_inc,
+                         c_args: ['-fvisibility=hidden']
+                        )
+
+build_rat_cli = get_option('build_rat_cli')
+
+if build_rat_cli
+  readline_dep = dependency('readline', required : true)
+  libuv_dep = dependency('libuv', required : true)
+
+  executable('rat_cli', 'cli/rat_cli.c',
+             c_args: '-DRAT_VERSION="v'+ rat_version +'"',
+             link_with : rat_lib,
+             dependencies : [readline_dep, libuv_dep],
+             include_directories : rat_lib_inc,
+             install : true
+            )
+endif
 
 allbuild = get_option('allbuild')
 
 if allbuild
-  readline_dep = dependency('readline', required : false)
-  if readline_dep.found()
-    executable('rat_cli', 'cli/rat_cli.c', c_args: '-DRAT_VERSION="v'+ rat_version +'"', link_with : rat_lib, dependencies : readline_dep, include_directories : rat_lib_inc, install : true)
-  endif
-
   # ---  RUST  ---
 
-  rat_rs = static_library('Rat', 'rust/rat_rs/src/lib.rs', link_with : rat_lib, rust_crate_type : 'rlib')
+  rat_rs = static_library('Rat', 'rust/rat_rs/src/lib.rs', link_with : rat_lib, rust_abi : 'rust')
 
   # --- TESTS ---
 
