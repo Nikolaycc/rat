@@ -4,7 +4,8 @@ void cap_cb(rat_packet_t* packet, void* data) {
     (void)data;
 
     if (packet->eth) {
-	// ....
+        // ....
+	    printf("Ethernet: %s -> %s\n", packet->eth->ether_shost, packet->eth->ether_dhost);
     }
 
     if (packet->arp) {
@@ -26,14 +27,14 @@ void cap_cb(rat_packet_t* packet, void* data) {
 
 int main(int argc, char** argv) {
     rat_require_sudo_privileges(argv[0]);
-    
+
     rat_device_t devices[MAX_INTERFACES];
     int devices_size = rat_device_lookup(devices);
     if (devices_size == 0) {
         printf("No network devices found\n");
         return 1;
     }
-    
+
     int device_idx = rat_device_pick(devices, devices_size);
     if (device_idx < 0) {
 	printf("No network devices index found\n");
@@ -42,10 +43,10 @@ int main(int argc, char** argv) {
 
     rat_cap_t cap = {0};
     rat_cap_create(&cap, &devices[device_idx], NULL, 0);
-    
+
     rat_cap_loop(&cap, cap_cb, 2);
-    
+
     rat_cap_destroy(&cap);
-    
+
     return 0;
 }

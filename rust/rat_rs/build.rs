@@ -1,20 +1,12 @@
-use meson_next as meson;
-
-use std::env;
-use std::path::PathBuf;
-use std::collections::HashMap;
+use cmake::Config;
 
 fn main() {
-    let mut build_path = PathBuf::from(env::var("OUT_DIR").unwrap());
-    build_path = build_path.join("../../build");
-    let build_path = build_path.to_str().unwrap();
+    let dst = Config::new("../..")
+        .define("BUILD_RAT_CLI", "OFF")
+        .define("BUILD_TESTS", "OFF")
+        .build_target("rat")
+        .build();
 
-    let mut options = HashMap::new();
-    options.insert("allbuild", "false");
-    
-    let config = meson::Config::new().options(options);
-
-    println!("cargo:rustc-link-lib=rat");
-    println!("cargo:rustc-link-search=native={}", build_path);
-    meson::build("../../", build_path, config);
+    println!("cargo:rustc-link-search=native={}/build", dst.display());
+    println!("cargo:rustc-link-lib=static=rat");
 }

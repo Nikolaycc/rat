@@ -5,3 +5,5 @@ obj/
 *.so
 build/
 target/
+.cache/
+compile_commands.json

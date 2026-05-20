@@ -1,3 +1,0 @@
-option('build_rat_cli', type : 'boolean', value : true)
-option('allbuild', type : 'boolean', value : true)
-option('debugc', type : 'boolean', value : false)
