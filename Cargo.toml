@@ -1,3 +1,3 @@
 [workspace]
-members = ["rust/rat_rs", "rust/rat_gui", "rust/rat"]
+members = ["rust/rat_rs", "rust/rat"]
 resolver = "2"
