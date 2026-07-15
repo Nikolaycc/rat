@@ -2,16 +2,10 @@ use libc::{BIOCGBLEN, BIOCIMMEDIATE, BIOCSETIF, ioctl};
 use std::os::fd::AsRawFd;
 use std::path::Path;
 
-mod addrs;
-mod capture;
-mod io;
-mod packets;
-mod utils;
-
-use crate::addrs::InterfaceMap;
-use crate::io::{open, read};
-use crate::packets::ethernet::EthernetFrame;
-use crate::utils::inspect_bpf_buffer;
+use rat::addrs::InterfaceMap;
+use rat::io::{open, read};
+use rat::packets::ethernet::EthernetFrame;
+use rat::utils::inspect_bpf_buffer;
 
 fn main() {
     let interfaces = InterfaceMap::new().unwrap();

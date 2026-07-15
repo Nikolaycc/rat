@@ -1,15 +1,15 @@
 use crate::addrs::MacAddr;
 use crate::utils::ParseError;
 
+// we need here zero copy!!
 #[derive(Debug)]
-pub struct EthernetFrame<'a> {
+pub struct EthernetFrame {
     pub dest_addr: MacAddr,
     pub source_addr: MacAddr,
     pub ty: u16,
-    pub payload: &'a [u8],
 }
 
-impl<'a> TryFrom<&'a [u8]> for EthernetFrame<'a> {
+impl<'a> TryFrom<&'a [u8]> for EthernetFrame {
     type Error = ParseError;
 
     fn try_from(data: &'a [u8]) -> Result<Self, Self::Error> {
@@ -44,7 +44,6 @@ impl<'a> TryFrom<&'a [u8]> for EthernetFrame<'a> {
             dest_addr,
             source_addr,
             ty,
-            payload: &data[HEADER_SIZE..],
         })
     }
 }

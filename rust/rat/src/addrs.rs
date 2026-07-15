@@ -57,17 +57,17 @@ impl std::fmt::Display for SockAddr {
 }
 
 impl SockAddr {
-    pub fn from_libc_sockaddr(sa: *const libc::sockaddr) -> std::io::Result<Self> {
-        let family = unsafe { (*sa).sa_family };
+    pub fn from_libc_sockaddr(sa: &libc::sockaddr) -> std::io::Result<Self> {
+        let family = unsafe { std::ptr::read(sa) };
 
-        match family as libc::c_int {
+        match family.sa_family as libc::c_int {
             libc::AF_INET => {
-                let sin = unsafe { &*(sa as *const libc::sockaddr_in) };
+                let sin = unsafe { *(std::ptr::from_ref(sa) as *const libc::sockaddr_in) };
                 let bits = u32::from_be(sin.sin_addr.s_addr);
                 Ok(SockAddr::IpV4(std::net::Ipv4Addr::from(bits)))
             }
             libc::AF_INET6 => {
-                let sin6 = unsafe { &*(sa as *const libc::sockaddr_in6) };
+                let sin6 = unsafe { *(std::ptr::from_ref(sa) as *const libc::sockaddr_in6) };
                 Ok(SockAddr::IpV6(std::net::Ipv6Addr::from(
                     sin6.sin6_addr.s6_addr,
                 )))

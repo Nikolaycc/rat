@@ -23,7 +23,7 @@ pub enum ParseError {
 }
 
 // convert in bytes array first next we checking array size if is over 16 we need to return error
-// next creating buf and fill zeros and we iterate with zip bcs zips giving tuple but same value and same address and we can cast into i8
+// next creating buf and fill with zeros and we iterate with zip bcs zips giving tuple but same value and same address and we can cast into i8
 // and return buf
 pub(crate) fn str_to_ifname(name: &str) -> Result<[i8; 16], std::io::Error> {
     let bytes = name.as_bytes();
@@ -48,7 +48,7 @@ pub(crate) fn bpf_wordalign(length: usize) -> usize {
     (length + alignment - 1) & !(alignment - 1)
 }
 
-pub(crate) fn inspect_bpf_buffer<F>(buf: &[u8], mut inspect_packet: F)
+pub fn inspect_bpf_buffer<F>(buf: &[u8], mut inspect_packet: F)
 where
     F: FnMut(&[u8]),
 {
