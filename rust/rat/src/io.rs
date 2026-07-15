@@ -9,9 +9,7 @@ pub(crate) fn open<S: AsRef<Path>>(path: &S, oflag: libc::c_int) -> std::io::Res
 
     let path = CString::new(path.as_ref().to_str().unwrap())?;
 
-    let raw_fd = syscall!(open(path.as_ptr(), oflag))?;
-
-    Ok(unsafe { OwnedFd::from_raw_fd(raw_fd) })
+    syscall!(open(path.as_ptr(), oflag)).map(|fd| unsafe { OwnedFd::from_raw_fd(fd) })
 }
 
 pub(crate) fn read<F: AsRawFd + AsFd>(fd: &F, buf: &mut [u8]) -> std::io::Result<usize> {
