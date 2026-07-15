@@ -20,7 +20,7 @@ fn main() {
 
     let raw_fd = fd.as_raw_fd();
 
-    let mut ifreq = interfaces.to_interface_req("lo0").unwrap();
+    let mut ifreq = interfaces.to_interface_req("en1").unwrap();
 
     let ret = unsafe { ioctl(raw_fd, BIOCSETIF, &mut ifreq.0) };
     if ret < 0 {
@@ -58,10 +58,10 @@ fn main() {
         };
 
         inspect_bpf_buffer(&buf[..size], |packet| {
-            match EthernetFrame::try_from(packet) {
+            match EthernetFrame::parse(&packet[..14]) {
                 Ok(ethernet) => {
                     println!(
-                        "EthernetFrame: dest_addr: {}, source_addr: {}, ty: 0x{:04X}, payload size: {}",
+                        "EthernetFrame: dest_addr: {:?}, source_addr: {:?}, ty: 0x{:04X}, payload size: {}",
                         ethernet.dest_addr, ethernet.source_addr, ethernet.ty, size,
                     );
                 }

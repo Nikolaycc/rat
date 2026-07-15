@@ -5,3 +5,4 @@ edition = "2024"
 
 [dependencies]
 libc = "0.2.186"
+zerocopy = { version = "0.8.54", features = ["derive", "std"] }
