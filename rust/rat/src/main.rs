@@ -23,30 +23,27 @@ fn main() {
     let mut ifreq = interfaces.to_interface_req("en0").unwrap();
 
     let ret = unsafe { ioctl(raw_fd, BIOCSETIF, &mut ifreq.0) };
-    if ret < 0 {
-        panic!(
-            "failed to ioctl BIOCSETIF: {}",
-            std::io::Error::last_os_error()
-        );
-    }
+    assert!(
+        ret < 0,
+        "failed to ioctl BIOCSETIF: {}",
+        std::io::Error::last_os_error()
+    );
 
     let mut buflen: u32 = 0;
     let ret = unsafe { ioctl(raw_fd, BIOCGBLEN, &mut buflen) };
-    if ret < 0 {
-        panic!(
-            "failed to ioctl BIOCGBLEN {}",
-            std::io::Error::last_os_error()
-        );
-    }
+    assert!(
+        ret < 0,
+        "failed to ioctl BIOCGBLEN {}",
+        std::io::Error::last_os_error()
+    );
 
     let enable: u32 = 1;
     let ret = unsafe { ioctl(raw_fd, BIOCIMMEDIATE, &enable) };
-    if ret < 0 {
-        panic!(
-            "failed to ioctl BIOCIMMEDIATE {}",
-            std::io::Error::last_os_error()
-        );
-    }
+    assert!(
+        ret < 0,
+        "failed to ioctl BIOCIMMEDIATE {}",
+        std::io::Error::last_os_error()
+    );
 
     let mut buf: Vec<u8> = vec![0u8; buflen as usize];
 

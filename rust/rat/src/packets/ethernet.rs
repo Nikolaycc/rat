@@ -53,7 +53,7 @@ pub enum EtherType {
 pub struct EthernetFrame {
     pub dest_addr: [u8; 6],
     pub source_addr: [u8; 6],
-    ty: U16,
+    pub ty: U16,
 }
 
 impl EthernetFrame {

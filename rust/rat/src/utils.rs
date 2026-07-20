@@ -22,28 +22,8 @@ pub enum ParseError {
     UnsupportedProtocol(u16),
 }
 
-// convert in bytes array first next we checking array size if is over 16 we need to return error
-// next creating buf and fill with zeros and we iterate with zip bcs zips giving tuple but same value and same address and we can cast into i8
-// and return buf
-pub(crate) fn str_to_ifname(name: &str) -> Result<[i8; 16], std::io::Error> {
-    let bytes = name.as_bytes();
-
-    // must fit with room for the trailing '\0' → max 15 chars
-    if bytes.len() >= 16 {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::InvalidInput,
-            "interface name too long",
-        ));
-    }
-
-    let mut buf = [0i8; 16]; // zero-filled → null terminator is automatic
-    for (dst, &src) in buf.iter_mut().zip(bytes) {
-        *dst = src as i8; // u8 → i8, same bits
-    }
-    Ok(buf)
-}
-
-pub(crate) fn bpf_wordalign(length: usize) -> usize {
+#[inline]
+pub(in crate::utils) const fn bpf_wordalign(length: usize) -> usize {
     let alignment = libc::BPF_ALIGNMENT as usize;
     (length + alignment - 1) & !(alignment - 1)
 }

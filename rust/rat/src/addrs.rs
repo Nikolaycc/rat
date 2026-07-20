@@ -1,19 +1,25 @@
+use core::ffi;
+use core::mem;
+use core::net;
+use core::ptr;
 use std::collections::HashMap;
+use std::fmt;
+use std::io;
 
-use crate::utils::{str_to_ifname, syscall};
+use crate::utils::syscall;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MacAddr {
     bytes: [u8; 6],
 }
 
 impl MacAddr {
     /// Creates a new `MacAddr` struct from the given bytes.
-    pub fn new(bytes: [u8; 6]) -> MacAddr {
+    pub const fn new(bytes: [u8; 6]) -> MacAddr {
         MacAddr { bytes }
     }
 
-    pub fn bytes(self) -> [u8; 6] {
+    pub const fn octets(self) -> [u8; 6] {
         self.bytes
     }
 }
@@ -24,8 +30,8 @@ impl From<[u8; 6]> for MacAddr {
     }
 }
 
-impl std::fmt::Display for MacAddr {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+impl fmt::Display for MacAddr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let _ = write!(
             f,
             "{:<02X}:{:<02X}:{:<02X}:{:<02X}:{:<02X}:{:<02X}",
@@ -43,12 +49,12 @@ impl std::fmt::Display for MacAddr {
 
 #[derive(Debug)]
 pub enum SockAddr {
-    IpV4(std::net::Ipv4Addr),
-    IpV6(std::net::Ipv6Addr),
+    IpV4(net::Ipv4Addr),
+    IpV6(net::Ipv6Addr),
 }
 
-impl std::fmt::Display for SockAddr {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Display for SockAddr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             SockAddr::IpV4(addr) => write!(f, "{addr}"),
             SockAddr::IpV6(addr) => write!(f, "{addr}"),
@@ -57,23 +63,21 @@ impl std::fmt::Display for SockAddr {
 }
 
 impl SockAddr {
-    pub fn from_libc_sockaddr(sa: &libc::sockaddr) -> std::io::Result<Self> {
-        let family = unsafe { std::ptr::read(sa) };
+    pub fn from_libc_sockaddr(sa: &libc::sockaddr) -> io::Result<Self> {
+        let family = unsafe { ptr::read(sa) };
 
-        match family.sa_family as libc::c_int {
+        match libc::c_int::from(family.sa_family) {
             libc::AF_INET => {
-                let sin = unsafe { *(std::ptr::from_ref(sa) as *const libc::sockaddr_in) };
+                let sin = unsafe { *(ptr::from_ref(sa).cast::<libc::sockaddr_in>()) };
                 let bits = u32::from_be(sin.sin_addr.s_addr);
-                Ok(SockAddr::IpV4(std::net::Ipv4Addr::from(bits)))
+                Ok(SockAddr::IpV4(net::Ipv4Addr::from(bits)))
             }
             libc::AF_INET6 => {
-                let sin6 = unsafe { *(std::ptr::from_ref(sa) as *const libc::sockaddr_in6) };
-                Ok(SockAddr::IpV6(std::net::Ipv6Addr::from(
-                    sin6.sin6_addr.s6_addr,
-                )))
+                let sin6 = unsafe { *(ptr::from_ref(sa).cast::<libc::sockaddr_in6>()) };
+                Ok(SockAddr::IpV6(net::Ipv6Addr::from(sin6.sin6_addr.s6_addr)))
             }
-            _ => Err(std::io::Error::new(
-                std::io::ErrorKind::Unsupported,
+            _ => Err(io::Error::new(
+                io::ErrorKind::Unsupported,
                 "Unsupported Protocol",
             )),
         }
@@ -94,12 +98,12 @@ pub struct InterfaceAddress {
 
 impl InterfaceAddress {
     pub(crate) fn from_ifaddrs(ifa: &libc::ifaddrs) -> Self {
-        let ifa_name = unsafe { std::ffi::CStr::from_ptr(ifa.ifa_name) };
+        let ifa_name = unsafe { ffi::CStr::from_ptr(ifa.ifa_name) };
         let ifa_addr = unsafe {
             match ifa.ifa_addr.as_ref() {
                 Some(addr) => SockAddr::from_libc_sockaddr(addr),
-                None => Err(std::io::Error::new(
-                    std::io::ErrorKind::InvalidData,
+                None => Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
                     "Invalid data ifa_addr maybe not exist",
                 )),
             }
@@ -107,8 +111,8 @@ impl InterfaceAddress {
         let ifa_netmask = unsafe {
             match ifa.ifa_netmask.as_ref() {
                 Some(addr) => SockAddr::from_libc_sockaddr(addr),
-                None => Err(std::io::Error::new(
-                    std::io::ErrorKind::InvalidData,
+                None => Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
                     "Invalid data ifa_netmask maybe not exist",
                 )),
             }
@@ -116,19 +120,19 @@ impl InterfaceAddress {
         let ifa_destination = unsafe {
             match ifa.ifa_dstaddr.as_ref() {
                 Some(addr) => SockAddr::from_libc_sockaddr(addr),
-                None => Err(std::io::Error::new(
-                    std::io::ErrorKind::InvalidData,
+                None => Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
                     "Invalid data ifa_dstaddr maybe not exist",
                 )),
             }
         };
 
-        return Self {
+        Self {
             name: ifa_name.to_string_lossy().into_owned(),
             address: ifa_addr.ok(),
             netmask: ifa_netmask.ok(),
             destination: ifa_destination.ok(),
-        };
+        }
     }
 }
 
@@ -158,24 +162,13 @@ impl Iterator for InterfaceAddressIterator {
     }
 }
 
-pub(crate) fn getifaddrs() -> std::io::Result<InterfaceAddressIterator> {
-    let mut addrs = std::mem::MaybeUninit::<*mut libc::ifaddrs>::uninit();
-
-    unsafe {
-        syscall!(getifaddrs(addrs.as_mut_ptr())).map(|_| InterfaceAddressIterator {
-            base: addrs.assume_init(),
-            next: addrs.assume_init(),
-        })
-    }
-}
-
 #[derive(Debug)]
 pub struct InterfaceMap {
     map: HashMap<String, Vec<InterfaceAddress>>,
 }
 
-impl std::fmt::Display for InterfaceMap {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Display for InterfaceMap {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for (name, addrs) in &self.map {
             writeln!(f, "{name}")?;
             for addr in addrs {
@@ -201,7 +194,7 @@ impl std::fmt::Display for InterfaceMap {
 }
 
 impl InterfaceMap {
-    pub fn new() -> std::io::Result<Self> {
+    pub fn new() -> io::Result<Self> {
         let ifs = getifaddrs()?;
 
         Ok(InterfaceMap::from_iterator(ifs))
@@ -210,7 +203,7 @@ impl InterfaceMap {
     pub fn from_iterator(ifs: InterfaceAddressIterator) -> Self {
         let mut map = HashMap::<String, Vec<InterfaceAddress>>::new();
 
-        for interface in ifs.into_iter() {
+        for interface in ifs {
             map.entry(interface.name.clone())
                 .or_default()
                 .push(interface);
@@ -219,26 +212,35 @@ impl InterfaceMap {
         Self { map }
     }
 
-    pub fn get<N: AsRef<str> + ?Sized>(&self, name: &N) -> Option<&Vec<InterfaceAddress>> {
+    #[inline]
+    pub fn get<N>(&self, name: &N) -> Option<&Vec<InterfaceAddress>>
+    where
+        N: AsRef<str> + ?Sized,
+    {
         self.map.get(name.as_ref())
     }
 
-    pub fn contains_interface<N: AsRef<str> + ?Sized>(&self, name: &N) -> bool {
+    #[inline]
+    pub fn contains_interface<N>(&self, name: &N) -> bool
+    where
+        N: AsRef<str> + ?Sized,
+    {
         self.map.contains_key(name.as_ref())
     }
 
-    pub fn to_interface_req<N: AsRef<str> + ?Sized>(
-        &self,
-        name: &N,
-    ) -> std::io::Result<InterfaceReq> {
+    pub fn to_interface_req<N>(&self, name: &N) -> io::Result<InterfaceReq>
+    where
+        N: AsRef<str> + ?Sized,
+    {
         if self.contains_interface(name) {
-            let mut ifreq: libc::ifreq = unsafe { std::mem::zeroed() };
-            ifreq.ifr_name = str_to_ifname(name.as_ref()).unwrap();
+            let mut ifreq: libc::ifreq = unsafe { mem::zeroed() };
+            ifreq.ifr_name =
+                str_to_ifname(name.as_ref()).expect("Failed to convert str to ifname.");
 
             Ok(InterfaceReq(ifreq))
         } else {
-            Err(std::io::Error::new(
-                std::io::ErrorKind::NotFound,
+            Err(io::Error::new(
+                io::ErrorKind::NotFound,
                 format!("Interface {} not found", name.as_ref()),
             ))
         }
@@ -246,3 +248,36 @@ impl InterfaceMap {
 }
 
 pub struct InterfaceReq(pub libc::ifreq);
+
+#[inline]
+pub(in crate::addrs) fn getifaddrs() -> io::Result<InterfaceAddressIterator> {
+    let mut addrs = mem::MaybeUninit::<*mut libc::ifaddrs>::uninit();
+
+    unsafe {
+        syscall!(getifaddrs(addrs.as_mut_ptr())).map(|_| InterfaceAddressIterator {
+            base: addrs.assume_init(),
+            next: addrs.assume_init(),
+        })
+    }
+}
+
+// convert in bytes array first next we checking array size if is over 16 we need to return error
+// next creating buf and fill with zeros and we iterate with zip bcs zips giving tuple but same value and same address and we can cast into i8
+// and return buf
+pub(in crate::addrs) fn str_to_ifname(name: &str) -> Result<[i8; 16], io::Error> {
+    let bytes = name.as_bytes();
+
+    // must fit with room for the trailing '\0' → max 15 chars
+    if bytes.len() >= 16 {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "interface name too long",
+        ));
+    }
+
+    let mut buf = [0i8; 16]; // zero-filled → null terminator is automatic
+    for (dst, &src) in buf.iter_mut().zip(bytes) {
+        *dst = src.cast_signed(); // u8 → i8, same bits
+    }
+    Ok(buf)
+}
