@@ -82,13 +82,13 @@ impl SockAddr {
 
 #[derive(Debug)]
 pub struct InterfaceAddress {
-    /// Name of the network interface
+    /// Name of the network interface.
     pub name: String,
-    /// Network address of this interface
+    /// Network address of this interface.
     pub address: Option<SockAddr>,
-    /// Netmask of this interface
+    /// Netmask of this interface.
     pub netmask: Option<SockAddr>,
-    /// Broadcast address of this interface, if applicable
+    /// Broadcast address of this interface, if applicable.
     pub destination: Option<SockAddr>,
 }
 
@@ -123,12 +123,12 @@ impl InterfaceAddress {
             }
         };
 
-        Self {
+        return Self {
             name: ifa_name.to_string_lossy().into_owned(),
             address: ifa_addr.ok(),
             netmask: ifa_netmask.ok(),
             destination: ifa_destination.ok(),
-        }
+        };
     }
 }
 
@@ -139,7 +139,9 @@ pub struct InterfaceAddressIterator {
 
 impl Drop for InterfaceAddressIterator {
     fn drop(&mut self) {
-        unsafe { libc::freeifaddrs(self.base) };
+        unsafe {
+            libc::freeifaddrs(self.base);
+        }
     }
 }
 
