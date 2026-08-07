@@ -26,5 +26,5 @@ where
         buf.as_mut_ptr().cast(),
         buf.len() as libc::size_t
     ))
-    .map(|n| n.cast_unsigned())
+    .map(|n| isize::cast_unsigned(n))
 }

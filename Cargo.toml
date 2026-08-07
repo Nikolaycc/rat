@@ -2,8 +2,11 @@
 members = ["rust/rat_rs", "rust/rat"]
 resolver = "2"
 
+[workspace.lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+
 [workspace.lints.clippy]
-all = "warn"
 pedantic = "warn"
-nursery = "warn"
 cargo = "warn"
+undocumented_unsafe_blocks = "warn"
+missing_safety_doc = "warn"

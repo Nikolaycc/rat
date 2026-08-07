@@ -1,71 +1,46 @@
-use libc::{BIOCGBLEN, BIOCIMMEDIATE, BIOCSETIF, ioctl};
-use std::os::fd::AsRawFd;
-use std::path::Path;
-
-use rat::addrs::InterfaceMap;
-use rat::io::{open, read};
+use rat::capture::Capture;
+use rat::packets::bpf::BPFFrame;
 use rat::packets::ethernet::EthernetFrame;
-use rat::utils::inspect_bpf_buffer;
 
-fn main() {
-    let interfaces = InterfaceMap::new().unwrap();
-    println!("{interfaces}");
+const ETH_ALEN: libc::c_int = 6;
 
-    let bpf_path = Path::new("/dev/bpf0");
+#[repr(C, packed)]
+pub struct ethhdr {
+    pub h_dest: [libc::c_uchar; ETH_ALEN as usize],
+    pub h_source: [libc::c_uchar; ETH_ALEN as usize],
+    pub h_proto: u16,
+}
 
-    let fd = match open(&bpf_path, libc::O_RDWR) {
-        Err(why) => panic!("couldn't open {}: {}", bpf_path.display(), why),
-        Ok(file) => file,
-    };
-
-    let raw_fd = fd.as_raw_fd();
-
-    let mut ifreq = interfaces.to_interface_req("en0").unwrap();
-
-    let ret = unsafe { ioctl(raw_fd, BIOCSETIF, &mut ifreq.0) };
-    assert!(
-        ret < 0,
-        "failed to ioctl BIOCSETIF: {}",
-        std::io::Error::last_os_error()
+fn main() -> std::io::Result<()> {
+    println!(
+        "BPFFrame sizeof = {}\n libc::bpf_hdr sizeof = {}",
+        size_of::<BPFFrame>(),
+        size_of::<libc::bpf_hdr>()
     );
 
-    let mut buflen: u32 = 0;
-    let ret = unsafe { ioctl(raw_fd, BIOCGBLEN, &mut buflen) };
-    assert!(
-        ret < 0,
-        "failed to ioctl BIOCGBLEN {}",
-        std::io::Error::last_os_error()
+    println!(
+        "EthernetFrame sizeof = {} align = {}\n libc::eth_hdr sizeof = {} align = {}",
+        size_of::<EthernetFrame>(),
+        align_of::<EthernetFrame>(),
+        size_of::<ethhdr>(),
+        align_of::<ethhdr>()
     );
 
-    let enable: u32 = 1;
-    let ret = unsafe { ioctl(raw_fd, BIOCIMMEDIATE, &enable) };
-    assert!(
-        ret < 0,
-        "failed to ioctl BIOCIMMEDIATE {}",
-        std::io::Error::last_os_error()
-    );
+    let mut cap = Capture::new("en1")?;
 
-    let mut buf: Vec<u8> = vec![0u8; buflen as usize];
+    cap.run_loop(|packet| match EthernetFrame::parse(packet) {
+        Ok(ethernet) => {
+            println!(
+                "EthernetFrame src: {:?}, dst {:?}, type: {}",
+                ethernet.source_addr,
+                ethernet.dest_addr,
+                { ethernet.ty }
+            );
+        }
+        Err(error) => {
+            eprintln!("Ethernet parse error: {error:?}");
+        }
+    });
 
-    loop {
-        buf.fill(0);
-        let size = match read(&fd, &mut buf) {
-            Err(why) => panic!("couldn't read {why}"),
-            Ok(size) => size,
-        };
-
-        inspect_bpf_buffer(&buf[..size], |packet| match EthernetFrame::parse(packet) {
-            Ok(ethernet) => {
-                println!(
-                    "EthernetFrame src: {:?}, dst {:?}, type: {:?}",
-                    ethernet.source_addr,
-                    ethernet.dest_addr,
-                    ethernet.ty()
-                );
-            }
-            Err(error) => {
-                eprintln!("Ethernet parse error: {error:?}");
-            }
-        });
-    }
+    Ok(())
 }
