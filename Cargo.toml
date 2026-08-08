@@ -1,5 +1,5 @@
 [workspace]
-members = ["rust/rat_rs", "rust/rat"]
+members = ["crates/rat", "crates/rat_derive"]
 resolver = "2"
 
 [workspace.lints.rust]

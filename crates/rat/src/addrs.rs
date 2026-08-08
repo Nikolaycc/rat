@@ -17,10 +17,12 @@ pub struct MacAddr {
 
 impl MacAddr {
     /// Creates a new `MacAddr` struct from the given bytes.
+    #[must_use]
     pub const fn new(bytes: [u8; 6]) -> MacAddr {
         MacAddr { bytes }
     }
 
+    #[must_use]
     pub const fn octets(self) -> [u8; 6] {
         self.bytes
     }
@@ -93,6 +95,7 @@ pub struct NetworkInterface {
 }
 
 impl NetworkInterface {
+    #[must_use]
     pub fn from_name<N>(ifname: N) -> io::Result<Self>
     where
         N: AsRef<str> + Into<String>,
@@ -108,10 +111,10 @@ impl NetworkInterface {
         })
     }
 
+    #[must_use]
     pub fn to_interface_req(&self) -> io::Result<InterfaceReq> {
         let mut ifreq: libc::ifreq = unsafe { mem::zeroed() };
-        ifreq.ifr_name =
-            str_to_ifname(self.name.as_ref()).expect("Failed to convert str to ifname.");
+        ifreq.ifr_name = str_to_ifname(self.name.as_ref())?;
 
         Ok(InterfaceReq(ifreq))
     }
@@ -184,6 +187,7 @@ impl Drop for NetworkInterfaceIterator {
 
 impl Iterator for NetworkInterfaceIterator {
     type Item = (String, NetworkInterfaceComp);
+
     fn next(&mut self) -> Option<<Self as Iterator>::Item> {
         match unsafe { self.next.as_ref() } {
             Some(ifaddr) => {
@@ -233,6 +237,7 @@ impl NetworkInterfaceMap {
         Ok(NetworkInterfaceMap::from_iterator(ifs))
     }
 
+    #[must_use]
     pub fn from_iterator(ifs: NetworkInterfaceIterator) -> Self {
         let mut map = HashMap::<String, Vec<NetworkInterfaceComp>>::new();
 
