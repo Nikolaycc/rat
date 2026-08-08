@@ -2,7 +2,7 @@ use std::fmt;
 use zerocopy::{Immutable, KnownLayout, TryFromBytes, network_endian::U16};
 
 use crate::addrs::MacAddr;
-use crate::packets::Packet;
+use crate::packets::{Layer, OSILayer, Packet};
 use crate::utils::ParseError;
 
 /*
@@ -85,7 +85,7 @@ impl fmt::Display for EtherType {
             Self::RsnPreauth => write!(f, "RSN Pre-Authentication"),
             Self::Ptp => write!(f, "PTP"),
             Self::Loopback => write!(f, "Loopback"),
-            Self::Unknown(c) => write!(f, "Unknown({})", c),
+            Self::Unknown(c) => write!(f, "Unknown({c})"),
         }
     }
 }
@@ -99,6 +99,8 @@ pub struct EthernetFrame {
 }
 
 impl Packet for EthernetFrame {
+    const LAYER: Layer = Layer::OSI(OSILayer::Physical);
+
     fn parse(data: &[u8]) -> Result<&Self, ParseError> {
         Self::try_ref_from_bytes(&data[..ETHER_HDR_LEN]).map_err(|_| ParseError::InvalidValue)
     }
