@@ -4,10 +4,11 @@ use rat::packets::bpf::BPFFrame;
 use rat::packets::ethernet::{EtherType, EthernetFrame};
 
 fn main() -> std::io::Result<()> {
-    println!(
-        "BPFFrame sizeof = {}\n libc::bpf_hdr sizeof = {}",
+    dbg!(
         size_of::<BPFFrame>(),
-        size_of::<libc::bpf_hdr>()
+        align_of::<BPFFrame>(),
+        size_of::<libc::bpf_hdr>(),
+        align_of::<libc::bpf_hdr>()
     );
 
     let mut cap = Capture::new("en1")?;
