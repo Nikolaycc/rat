@@ -1,6 +1,7 @@
 use std::fmt;
 use zerocopy::{Immutable, KnownLayout, TryFromBytes, network_endian::U16};
 
+use crate::addrs::MacAddr;
 use crate::packets::Packet;
 use crate::utils::ParseError;
 
@@ -92,8 +93,8 @@ impl fmt::Display for EtherType {
 #[derive(TryFromBytes, Immutable, KnownLayout)]
 #[repr(C, packed)]
 pub struct EthernetFrame {
-    pub dest_addr: [u8; 6],
-    pub source_addr: [u8; 6],
+    pub dst: MacAddr,
+    pub src: MacAddr,
     pub ty: U16,
 }
 

@@ -3,8 +3,6 @@ use rat::packets::Packet;
 use rat::packets::bpf::BPFFrame;
 use rat::packets::ethernet::{EtherType, EthernetFrame};
 
-use rat::addrs::MacAddr;
-
 fn main() -> std::io::Result<()> {
     println!(
         "BPFFrame sizeof = {}\n libc::bpf_hdr sizeof = {}",
@@ -18,8 +16,8 @@ fn main() -> std::io::Result<()> {
         Ok(ethernet) => {
             println!(
                 "EthernetFrame src: {}, dst {}, type: {}",
-                MacAddr::new(ethernet.source_addr),
-                MacAddr::new(ethernet.dest_addr),
+                ethernet.src,
+                ethernet.dst,
                 EtherType::from(ethernet.ty.get())
             );
         }

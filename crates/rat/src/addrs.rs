@@ -7,10 +7,14 @@ use std::ffi::CString;
 use std::fmt;
 use std::io;
 use std::io::ErrorKind;
+use zerocopy::{Immutable, KnownLayout, TryFromBytes, Unaligned};
 
 use crate::utils::{syscall, syscallu};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, TryFromBytes, Immutable, KnownLayout, Unaligned,
+)]
+#[repr(transparent)]
 pub struct MacAddr {
     bytes: [u8; 6],
 }
@@ -18,19 +22,8 @@ pub struct MacAddr {
 impl MacAddr {
     /// Creates a new `MacAddr` struct from the given bytes.
     #[must_use]
-    pub const fn new(bytes: [u8; 6]) -> MacAddr {
-        MacAddr { bytes }
-    }
-
-    #[must_use]
-    pub const fn octets(self) -> [u8; 6] {
-        self.bytes
-    }
-}
-
-impl From<[u8; 6]> for MacAddr {
-    fn from(v: [u8; 6]) -> Self {
-        MacAddr::new(v)
+    pub const fn octets(&self) -> &[u8; 6] {
+        &self.bytes
     }
 }
 
