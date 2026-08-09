@@ -1,3 +1,12 @@
 [workspace]
-members = ["rust/rat_rs", "rust/rat_gui"]
+members = ["crates/rat", "crates/rat_derive"]
 resolver = "2"
+
+[workspace.lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+
+[workspace.lints.clippy]
+pedantic = "warn"
+cargo = "warn"
+undocumented_unsafe_blocks = "warn"
+missing_safety_doc = "warn"
