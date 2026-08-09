@@ -11,21 +11,25 @@ fn main() -> std::io::Result<()> {
         align_of::<libc::bpf_hdr>()
     );
 
-    let mut cap = Capture::new("en1")?;
+    let cap = Capture::new("en1")?;
 
-    cap.run_loop(|packet| match EthernetFrame::parse(packet) {
-        Ok(ethernet) => {
-            println!(
-                "EthernetFrame src: {}, dst {}, type: {}",
-                ethernet.src,
-                ethernet.dst,
-                EtherType::from(ethernet.ty.get())
-            );
+    for batch in cap {
+        for packet in batch {
+            match EthernetFrame::parse(packet.data()) {
+                Ok(ethernet) => {
+                    println!(
+                        "EthernetFrame src: {}, dst {}, type: {}",
+                        ethernet.src,
+                        ethernet.dst,
+                        EtherType::from(ethernet.ty.get())
+                    );
+                }
+                Err(error) => {
+                    eprintln!("Ethernet parse error: {error:?}");
+                }
+            }
         }
-        Err(error) => {
-            eprintln!("Ethernet parse error: {error:?}");
-        }
-    });
+    }
 
     Ok(())
 }

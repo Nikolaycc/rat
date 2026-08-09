@@ -1,6 +1,7 @@
 use crate::addrs::NetworkInterface;
 use crate::packets::Packet;
 use crate::packets::bpf::BPFFrame;
+use bytes::{Bytes, BytesMut};
 use libc::{BIOCGBLEN, BIOCIMMEDIATE, BIOCSETIF};
 use std::io::ErrorKind;
 use std::os::fd::{AsRawFd, OwnedFd};
@@ -10,9 +11,80 @@ use crate::addrs::NetworkInterfaceMap;
 use crate::io::{open, read};
 use crate::utils::syscall;
 
+pub struct RawPacket(Bytes);
+
+impl RawPacket {
+    #[must_use]
+    #[inline]
+    pub fn data(&self) -> &[u8] {
+        &self.0
+    }
+}
+
+pub struct CaptureBatch(Bytes);
+
+impl IntoIterator for CaptureBatch {
+    type Item = RawPacket;
+    type IntoIter = CaptureIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        CaptureIter {
+            data: self.0.clone(),
+            offset: 0usize,
+        }
+    }
+}
+
+pub struct CaptureIter {
+    data: Bytes,
+    offset: usize,
+}
+
+impl Iterator for CaptureIter {
+    type Item = RawPacket;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let remaining = self.data.len().checked_sub(self.offset)?;
+
+        if remaining < size_of::<BPFFrame>() {
+            return None;
+        }
+
+        let hdr = BPFFrame::parse(&self.data[self.offset..]).ok()?;
+
+        let header_len = hdr.bh_hdrlen.get() as usize;
+        let captured_len = hdr.bh_caplen.get() as usize;
+
+        if header_len < size_of::<BPFFrame>() {
+            return None;
+        }
+
+        let packet_start = self.offset.checked_add(header_len)?;
+
+        let packet_end = packet_start.checked_add(captured_len)?;
+
+        if packet_end > self.data.len() {
+            return None;
+        }
+
+        let packet = self.data.slice(packet_start..packet_end);
+
+        let unaligned_len = header_len.checked_add(captured_len)?;
+
+        let record_len = bpf_wordalign(unaligned_len);
+
+        self.offset = self
+            .offset
+            .checked_add(record_len)
+            .unwrap_or(self.data.len());
+
+        Some(RawPacket(packet))
+    }
+}
+
 pub struct Capture {
     fd: OwnedFd,
-    buf: Vec<u8>,
+    buf: BytesMut,
     interface: NetworkInterface,
 }
 
@@ -73,74 +145,26 @@ impl Capture {
 
         Ok(Self {
             fd,
-            buf: vec![0u8; buflen as usize],
+            buf: BytesMut::zeroed(buflen as usize),
             interface,
         })
     }
+}
 
-    pub fn run_loop<F>(&mut self, cb: F)
-    where
-        F: Fn(&[u8]),
-    {
-        loop {
-            self.buf.fill(0);
-            let _size = match read(&self.fd, &mut self.buf) {
-                Err(why) => panic!("couldn't read {why}"),
-                Ok(size) => size,
-            };
+impl Iterator for Capture {
+    type Item = CaptureBatch;
 
-            let mut offset = 0usize;
+    fn next(&mut self) -> Option<Self::Item> {
+        self.buf.fill(0);
 
-            while offset + size_of::<libc::bpf_hdr>() <= self.buf.len() {
-                dbg!(offset);
+        let _size = match read(&self.fd, &mut self.buf) {
+            Err(why) => panic!("couldn't read {why}"),
+            Ok(size) => size,
+        };
 
-                let buffer = &self.buf;
-                let hdr = BPFFrame::parse(buffer.split_at(offset).1).unwrap();
+        let buf = self.buf.clone().freeze();
 
-                dbg!(hdr);
-
-                let header_len = hdr.bh_hdrlen.get() as usize;
-                let captured_len = hdr.bh_caplen.get() as usize;
-
-                if header_len == 0 || captured_len == 0 {
-                    break;
-                }
-
-                let Some(packet_start) = offset.checked_add(header_len) else {
-                    break;
-                };
-
-                let Some(packet_end) = packet_start.checked_add(captured_len) else {
-                    break;
-                };
-
-                if packet_end > buffer.len() {
-                    eprintln!(
-                        "invalid BPF record: packet_end={packet_end}, buffer_len={}",
-                        buffer.len()
-                    );
-                    break;
-                }
-
-                cb(&buffer[packet_start..packet_end]);
-
-                let record_len = bpf_wordalign(header_len + captured_len);
-
-                if record_len == 0 {
-                    break;
-                }
-
-                let Some(next_offset) = offset.checked_add(record_len) else {
-                    break;
-                };
-
-                if next_offset > buffer.len() {
-                    break;
-                }
-
-                offset = next_offset;
-            }
-        }
+        Some(CaptureBatch(buf))
     }
 }
 
