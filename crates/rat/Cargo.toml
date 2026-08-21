@@ -6,7 +6,9 @@ edition = "2024"
 [dependencies]
 bytes = "1.12.1"
 libc = "0.2.186"
-zerocopy = { version = "0.8.54", features = ["derive", "std"] }
+
+zerocopy = { workspace = true }
+rat_derive = { workspace = true }
 
 [lints]
 workspace = true

@@ -11,7 +11,7 @@ use crate::addrs::NetworkInterfaceMap;
 use crate::io::{open, read};
 use crate::utils::syscall;
 
-pub struct RawPacket(Bytes);
+pub struct RawPacket(pub Bytes);
 
 impl RawPacket {
     #[must_use]

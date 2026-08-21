@@ -2,6 +2,12 @@
 members = ["crates/rat", "crates/rat_derive"]
 resolver = "2"
 
+[workspace.dependencies]
+zerocopy = { version = "0.8.54", features = ["derive", "std"] }
+
+rat_derive = { path = "crates/rat_derive" }
+rat = { path = "crates/rat" }
+
 [workspace.lints.rust]
 unsafe_op_in_unsafe_fn = "deny"
 

@@ -1,15 +1,43 @@
-use core::ffi;
-use core::mem;
-use core::net;
-use core::ptr;
 use std::collections::HashMap;
+use std::ffi;
 use std::ffi::CString;
 use std::fmt;
 use std::io;
 use std::io::ErrorKind;
+use std::mem;
+use std::net;
+use std::ptr;
+use std::sync::Arc;
 use zerocopy::{Immutable, KnownLayout, TryFromBytes, Unaligned};
 
 use crate::utils::{syscall, syscallu};
+
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, TryFromBytes, Immutable, KnownLayout, Unaligned,
+)]
+#[repr(transparent)]
+pub struct IPAddr {
+    bytes: [u8; 4],
+}
+
+impl IPAddr {
+    #[must_use]
+    pub const fn octets(&self) -> &[u8; 4] {
+        &self.bytes
+    }
+}
+
+impl fmt::Display for IPAddr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let _ = write!(
+            f,
+            "{}.{}.{}.{}",
+            self.bytes[0], self.bytes[1], self.bytes[2], self.bytes[3]
+        );
+
+        Ok(())
+    }
+}
 
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, Hash, TryFromBytes, Immutable, KnownLayout, Unaligned,
@@ -83,23 +111,19 @@ impl SockAddr {
 
 #[derive(Debug)]
 pub struct NetworkInterface {
-    pub name: String,
+    pub name: Arc<str>,
     pub index: u32,
 }
 
 impl NetworkInterface {
-    #[must_use]
-    pub fn from_name<N>(ifname: N) -> io::Result<Self>
-    where
-        N: AsRef<str> + Into<String>,
-    {
-        let name = CString::new(ifname.as_ref())
-            .map_err(|error| io::Error::new(ErrorKind::InvalidInput, error))?;
+    pub fn from_name(ifname: &str) -> io::Result<Self> {
+        let name =
+            CString::new(ifname).map_err(|error| io::Error::new(ErrorKind::InvalidInput, error))?;
 
         let index = syscallu!(if_nametoindex(name.as_ptr()))?;
 
         Ok(Self {
-            name: ifname.into(),
+            name: Arc::from(ifname),
             index,
         })
     }

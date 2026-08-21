@@ -1,9 +1,8 @@
 use std::fmt;
-use zerocopy::{Immutable, KnownLayout, TryFromBytes, network_endian::U16};
+
+use rat_derive::packet;
 
 use crate::addrs::MacAddr;
-use crate::packets::{Layer, OSILayer, Packet};
-use crate::utils::ParseError;
 
 /*
  * The number of bytes in an ethernet (MAC) address.
@@ -90,18 +89,13 @@ impl fmt::Display for EtherType {
     }
 }
 
-#[derive(TryFromBytes, Immutable, KnownLayout)]
-#[repr(C, packed)]
+#[packet(
+    layer = Physical,
+    selector = 0x0000
+)]
 pub struct EthernetFrame {
     pub dst: MacAddr,
     pub src: MacAddr,
-    pub ty: U16,
-}
-
-impl Packet for EthernetFrame {
-    const LAYER: Layer = Layer::OSI(OSILayer::Physical);
-
-    fn parse(data: &[u8]) -> Result<&Self, ParseError> {
-        Self::try_ref_from_bytes(&data[..ETHER_HDR_LEN]).map_err(|_| ParseError::InvalidValue)
-    }
+    #[packet(next)]
+    pub ty: u16,
 }

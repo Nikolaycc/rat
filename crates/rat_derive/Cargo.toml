@@ -3,7 +3,17 @@ name = "rat_derive"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+proc-macro = true
+
 [dependencies]
+syn = { version = "3.0.3", features = ["full"] }
+quote = "1.0.47"
+proc-macro-crate = "3"
+proc-macro2 = "1.0.107"
+
+[dev-dependencies]
+rat = { workspace = true }
 
 [lints]
 workspace = true

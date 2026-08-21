@@ -24,9 +24,18 @@ pub struct BPFFrame {
 
 impl Packet for BPFFrame {
     const LAYER: Layer = Layer::PRH;
+    const SELECTOR: u32 = 0;
 
     fn parse(frame: &[u8]) -> Result<&Self, ParseError> {
         BPFFrame::try_ref_from_bytes(&frame[..size_of::<BPFFrame>()])
             .map_err(|_| ParseError::InvalidValue)
+    }
+
+    fn parent_type_id() -> Option<std::any::TypeId> {
+        None
+    }
+
+    fn next_selector(&self) -> Option<u32> {
+        None
     }
 }
