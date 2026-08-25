@@ -1,12 +1,12 @@
 use rat::capture::Capture;
-use rat::packets::Packet;
-use rat::packets::ip::IPFrame;
-use rat::packets::tcp::TCPFrame;
-use rat::packets::udp::UDPFrame;
 use rat::packets::{
+    Packet,
     arp::ARPFrame,
     bpf::BPFFrame,
     ethernet::{EtherType, EthernetFrame},
+    ip::IPFrame,
+    tcp::TCPFrame,
+    udp::UDPFrame,
 };
 
 fn main() -> std::io::Result<()> {

@@ -3,7 +3,6 @@ use zerocopy::{
     native_endian::{I32, U16, U32},
 };
 
-use crate::packets::{Layer, Packet};
 use crate::utils::ParseError;
 
 #[derive(Debug, PartialEq, Eq, TryFromBytes, Immutable, KnownLayout, Unaligned)]
@@ -22,20 +21,10 @@ pub struct BPFFrame {
     pub bh_hdrlen: U16,
 }
 
-impl Packet for BPFFrame {
-    const LAYER: Layer = Layer::PRH;
-    const SELECTOR: u32 = 0;
-
-    fn parse(frame: &[u8]) -> Result<&Self, ParseError> {
+impl BPFFrame {
+    #[must_use]
+    pub fn parse(frame: &[u8]) -> Result<&Self, ParseError> {
         BPFFrame::try_ref_from_bytes(&frame[..size_of::<BPFFrame>()])
             .map_err(|_| ParseError::InvalidValue)
-    }
-
-    fn parent_type_id() -> Option<std::any::TypeId> {
-        None
-    }
-
-    fn next_selector(&self) -> Option<u32> {
-        None
     }
 }

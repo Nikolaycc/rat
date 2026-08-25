@@ -54,7 +54,7 @@ pub fn packet(attr: TokenStream, item: TokenStream) -> TokenStream {
         #item_struct
 
         impl #rat_path::packets::Packet for #struct_ident {
-            const LAYER: #rat_path::packets::Layer = #rat_path::packets::Layer::OSI(#rat_path::packets::OSILayer::#layer);
+            const LAYER: #rat_path::packets::Layer = #rat_path::packets::Layer::#layer;
             const SELECTOR: u32 = #selector as u32;
 
             fn parse(data: &[u8]) -> ::std::result::Result<&Self, #rat_path::utils::ParseError> {

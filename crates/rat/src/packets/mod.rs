@@ -1,7 +1,6 @@
 use crate::utils::ParseError;
 
 pub mod arp;
-pub mod bpf;
 pub mod ethernet;
 pub mod icmp;
 pub mod ip;
@@ -10,11 +9,6 @@ pub mod tcp;
 pub mod udp;
 
 pub enum Layer {
-    PRH, // Packet Record Header
-    OSI(OSILayer),
-}
-
-pub enum OSILayer {
     Physical,
     DataLink,
     Network,

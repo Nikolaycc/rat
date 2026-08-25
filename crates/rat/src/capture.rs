@@ -1,6 +1,5 @@
 use crate::addrs::NetworkInterface;
-use crate::packets::Packet;
-use crate::packets::bpf::BPFFrame;
+use crate::bpf::BPFFrame;
 use bytes::{Bytes, BytesMut};
 use libc::{BIOCGBLEN, BIOCIMMEDIATE, BIOCSETIF};
 use std::io::ErrorKind;
