@@ -49,7 +49,7 @@ impl Iterator for CaptureIter {
             return None;
         }
 
-        let hdr = BPFFrame::parse(&self.data[self.offset..]).ok()?;
+        let (hdr, _) = BPFFrame::parse(&self.data[self.offset..]).ok()?;
 
         let header_len = hdr.bh_hdrlen.get() as usize;
         let captured_len = hdr.bh_caplen.get() as usize;

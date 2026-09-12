@@ -1,9 +1,9 @@
-use crate::packets::ip::IPFrame;
+use crate::protocols::ipv4::IPv4Frame;
 use rat_derive::packet;
 
 #[packet(
     layer = Network,
-    parent = IPFrame,
+    parent = IPv4Frame,
     selector = 89
 )]
 pub struct OSPFFrame {

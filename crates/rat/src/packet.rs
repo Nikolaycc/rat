@@ -1,13 +1,5 @@
 use crate::utils::ParseError;
 
-pub mod arp;
-pub mod ethernet;
-pub mod icmp;
-pub mod ip;
-pub mod ospf;
-pub mod tcp;
-pub mod udp;
-
 pub enum Layer {
     Physical,
     DataLink,

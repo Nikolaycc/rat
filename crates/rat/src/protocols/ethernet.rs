@@ -1,4 +1,4 @@
-use std::fmt;
+use std::fmt::{self, Display};
 
 use rat_derive::packet;
 
@@ -34,7 +34,7 @@ pub const ETHER_MIN_LEN: usize = 64;
  */
 pub const ETHER_MAX_LEN: usize = 1518;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 #[repr(u16)]
 pub enum EtherType {
     Pup,        /* PUP protocol */
@@ -94,8 +94,20 @@ impl fmt::Display for EtherType {
     selector = 0x0000
 )]
 pub struct EthernetFrame {
+    #[packet(label = "Destination")]
     pub dst: MacAddr,
+
+    #[packet(label = "Source")]
     pub src: MacAddr,
-    #[packet(next)]
+
+    #[packet(
+        label = "EtherType",
+        display_with = display_ethertype,
+        next
+    )]
     pub ty: u16,
+}
+
+fn display_ethertype(value: u16, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    EtherType::from(value).fmt(f)
 }

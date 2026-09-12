@@ -23,8 +23,8 @@ pub struct BPFFrame {
 
 impl BPFFrame {
     #[must_use]
-    pub fn parse(frame: &[u8]) -> Result<&Self, ParseError> {
-        BPFFrame::try_ref_from_bytes(&frame[..size_of::<BPFFrame>()])
+    pub fn parse(frame: &[u8]) -> Result<(&Self, &[u8]), ParseError> {
+        BPFFrame::try_ref_from_prefix(&frame[..size_of::<BPFFrame>()])
             .map_err(|_| ParseError::InvalidValue)
     }
 }

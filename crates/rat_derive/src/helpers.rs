@@ -3,6 +3,20 @@ use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 use syn::{Type, TypePath};
 
+#[inline]
+pub(crate) fn normilze_field(name: &str) -> String {
+    name.split('_')
+        .map(|word| {
+            let mut chars = word.chars();
+            match chars.next() {
+                None => String::new(),
+                Some(fchar) => fchar.to_uppercase().collect::<String>() + chars.as_str(),
+            }
+        })
+        .collect::<Vec<String>>()
+        .join(" ")
+}
+
 pub(crate) fn map_primitive_to_zerocopy(ty: &Type) -> Option<Type> {
     let Type::Path(TypePath {
         path, qself: None, ..

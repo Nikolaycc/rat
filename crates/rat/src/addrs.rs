@@ -6,6 +6,7 @@ use std::io;
 use std::io::ErrorKind;
 use std::mem;
 use std::net;
+use std::net::Ipv6Addr;
 use std::ptr;
 use std::sync::Arc;
 use zerocopy::{Immutable, KnownLayout, TryFromBytes, Unaligned};
@@ -16,23 +17,54 @@ use crate::utils::{syscall, syscallu};
     Debug, Clone, Copy, PartialEq, Eq, Hash, TryFromBytes, Immutable, KnownLayout, Unaligned,
 )]
 #[repr(transparent)]
-pub struct IPAddr {
-    bytes: [u8; 4],
+pub struct IPv6Addr {
+    octets: [u8; 16],
 }
 
-impl IPAddr {
+impl IPv6Addr {
     #[must_use]
-    pub const fn octets(&self) -> &[u8; 4] {
-        &self.bytes
+    #[inline]
+    pub const fn octets(&self) -> &[u8; 16] {
+        &self.octets
     }
 }
 
-impl fmt::Display for IPAddr {
+impl fmt::Display for IPv6Addr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        Ipv6Addr::from(self.octets).fmt(f)
+    }
+}
+
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, TryFromBytes, Immutable, KnownLayout, Unaligned,
+)]
+#[repr(transparent)]
+pub struct IPv4Addr {
+    octets: [u8; 4],
+}
+
+impl IPv4Addr {
+    #[must_use]
+    #[inline]
+    pub const fn new(a: u8, b: u8, c: u8, d: u8) -> IPv4Addr {
+        IPv4Addr {
+            octets: [a, b, c, d],
+        }
+    }
+
+    #[must_use]
+    #[inline]
+    pub const fn octets(&self) -> [u8; 4] {
+        self.octets
+    }
+}
+
+impl fmt::Display for IPv4Addr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let _ = write!(
             f,
             "{}.{}.{}.{}",
-            self.bytes[0], self.bytes[1], self.bytes[2], self.bytes[3]
+            self.octets[0], self.octets[1], self.octets[2], self.octets[3]
         );
 
         Ok(())
@@ -44,14 +76,15 @@ impl fmt::Display for IPAddr {
 )]
 #[repr(transparent)]
 pub struct MacAddr {
-    bytes: [u8; 6],
+    octets: [u8; 6],
 }
 
 impl MacAddr {
     /// Creates a new `MacAddr` struct from the given bytes.
     #[must_use]
+    #[inline]
     pub const fn octets(&self) -> &[u8; 6] {
-        &self.bytes
+        &self.octets
     }
 }
 
@@ -60,12 +93,12 @@ impl fmt::Display for MacAddr {
         let _ = write!(
             f,
             "{:<02X}:{:<02X}:{:<02X}:{:<02X}:{:<02X}:{:<02X}",
-            self.bytes[0],
-            self.bytes[1],
-            self.bytes[2],
-            self.bytes[3],
-            self.bytes[4],
-            self.bytes[5]
+            self.octets[0],
+            self.octets[1],
+            self.octets[2],
+            self.octets[3],
+            self.octets[4],
+            self.octets[5]
         );
 
         Ok(())
