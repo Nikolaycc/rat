@@ -9,6 +9,7 @@ libc = "0.2.186"
 
 zerocopy = { workspace = true }
 rat_derive = { workspace = true }
+thiserror = "2.0.20"
 
 [lints]
 workspace = true

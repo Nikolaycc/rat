@@ -1,15 +1,16 @@
-use crate::addrs::NetworkInterface;
-use crate::bpf::BPFFrame;
 use bytes::{Bytes, BytesMut};
 use libc::{BIOCGBLEN, BIOCIMMEDIATE, BIOCSETIF};
 use std::io::ErrorKind;
 use std::os::fd::{AsRawFd, OwnedFd};
 use std::path::Path;
 
+use crate::addrs::NetworkInterface;
 use crate::addrs::NetworkInterfaceMap;
+use crate::bpf::BPFFrame;
 use crate::io::{open, read};
 use crate::utils::syscall;
 
+#[derive(Debug)]
 pub struct RawPacket(pub Bytes);
 
 impl RawPacket {
@@ -17,6 +18,12 @@ impl RawPacket {
     #[inline]
     pub fn data(&self) -> &[u8] {
         &self.0
+    }
+
+    #[must_use]
+    #[inline]
+    pub fn bytes(&self) -> Bytes {
+        self.0.clone()
     }
 }
 

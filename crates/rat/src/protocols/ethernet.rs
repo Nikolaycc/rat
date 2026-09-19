@@ -94,18 +94,15 @@ impl fmt::Display for EtherType {
     selector = 0x0000
 )]
 pub struct EthernetFrame {
-    #[packet(label = "Destination")]
-    pub dst: MacAddr,
-
-    #[packet(label = "Source")]
-    pub src: MacAddr,
+    pub destination: MacAddr,
+    pub source: MacAddr,
 
     #[packet(
         label = "EtherType",
         display_with = display_ethertype,
         next
     )]
-    pub ty: u16,
+    pub ether_type: u16,
 }
 
 fn display_ethertype(value: u16, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
