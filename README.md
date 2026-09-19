@@ -9,20 +9,24 @@ Basic example
 
 ```rs
     let cap = Capture::new("en1")?;
+
+    let registry = ProtocolRegistry::builder()
+        .defaults()
+        .register::<OSPFFrame>()
+        .build()
+        .expect("Failed to build ProtocolRegistry");
+    let parser = Parser::new(&registry);
     
     for batch in cap {
         for packet in batch {
-            match EthernetFrame::parse(packet.data()) {
-                Ok(ethernet) => {
-                    println!(
-                        "EthernetFrame src: {}, dst {}, type: {}",
-                        ethernet.src,
-                        ethernet.dst,
-                        EtherType::from(ethernet.ty.get())
-                    );
-                }
-                Err(error) => {
-                    eprintln!("Ethernet parse error: {error:?}");
+            for layer in parser.parse(packet.bytes()) {
+                let layer = layer.unwrap();
+                println!("{layer}");
+
+                if let Some(tcp) = layer.get::<TCPFrame>() {
+                    if tcp.source_port == 443 || tcp.destination_port == 443 {
+                        println!("Bingo!")
+                    }
                 }
             }
         }
