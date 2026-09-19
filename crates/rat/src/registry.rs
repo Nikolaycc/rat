@@ -6,6 +6,10 @@ use std::{
 use thiserror::Error;
 
 use crate::packet::Packet;
+use crate::protocols::{
+    arp::ARPFrame, ethernet::EthernetFrame, icmp::ICMPFrame, ipv4::IPv4Frame, ipv6::IPv6Frame,
+    ospf::OSPFFrame, tcp::TCPFrame, udp::UDPFrame,
+};
 use crate::utils::ParseError;
 
 #[derive(Error, Debug)]
@@ -123,12 +127,12 @@ pub(crate) struct PendingProtocol {
     pub format_fn: FormatFn,
 }
 
-pub struct RegistryBuilder {
+pub struct ProtocolRegistryBuilder {
     root: Option<PendingProtocol>,
     protocols: Vec<PendingProtocol>,
 }
 
-impl RegistryBuilder {
+impl ProtocolRegistryBuilder {
     #[must_use]
     #[inline]
     pub fn new() -> Self {
@@ -200,6 +204,18 @@ impl RegistryBuilder {
         });
 
         self
+    }
+
+    #[inline]
+    pub fn defaults(&mut self) -> &mut Self {
+        self.root::<EthernetFrame>()
+            .register::<IPv4Frame>()
+            .register::<IPv6Frame>()
+            .register::<ARPFrame>()
+            .register::<ICMPFrame>()
+            .register::<OSPFFrame>()
+            .register::<TCPFrame>()
+            .register::<UDPFrame>()
     }
 
     pub fn build(&mut self) -> Result<ProtocolRegistry, RegistryError> {
@@ -302,7 +318,7 @@ impl RegistryBuilder {
     }
 }
 
-impl Default for RegistryBuilder {
+impl Default for ProtocolRegistryBuilder {
     fn default() -> Self {
         Self::new()
     }
@@ -334,8 +350,8 @@ pub struct ProtocolRegistry {
 
 impl ProtocolRegistry {
     #[must_use]
-    pub fn builder() -> RegistryBuilder {
-        RegistryBuilder::new()
+    pub fn builder() -> ProtocolRegistryBuilder {
+        ProtocolRegistryBuilder::new()
     }
 
     #[inline]
@@ -372,7 +388,7 @@ mod tests {
 
     #[test]
     fn registry_builder_root() {
-        let registry = RegistryBuilder::new_with_root::<EthernetFrame>()
+        let registry = ProtocolRegistryBuilder::new_with_root::<EthernetFrame>()
             .register::<IPv4Frame>()
             .register::<IPv6Frame>()
             .register::<ARPFrame>()

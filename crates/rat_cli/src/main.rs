@@ -20,14 +20,7 @@ fn main() -> std::io::Result<()> {
     let cap = Capture::new(&args.name)?;
 
     let registry = ProtocolRegistry::builder()
-        .root::<EthernetFrame>()
-        .register::<IPv4Frame>()
-        .register::<IPv6Frame>()
-        .register::<ARPFrame>()
-        .register::<ICMPFrame>()
-        .register::<OSPFFrame>()
-        .register::<TCPFrame>()
-        .register::<UDPFrame>()
+        .defaults()
         .build()
         .expect("Failed to build ProtocolRegistry");
     let parser = Parser::new(&registry);
