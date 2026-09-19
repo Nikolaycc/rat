@@ -62,6 +62,26 @@ pub fn packet(attr: TokenStream, item: TokenStream) -> TokenStream {
         }
     };
 
+    let header_len_fn = if let Some(header_len) = &args.header_len {
+        quote! {
+            fn header_len(&self) -> usize {
+                #header_len
+            }
+        }
+    } else {
+        quote! {}
+    };
+
+    let packet_len_fn = if let Some(packet_len) = &args.packet_len {
+        quote! {
+            fn packet_len(&self) -> Option<usize> {
+                Some(#packet_len)
+            }
+        }
+    } else {
+        quote! {}
+    };
+
     let parent_type_id_body = if let Some(parent) = &args.parent {
         quote! {
             Some(
@@ -188,6 +208,10 @@ pub fn packet(attr: TokenStream, item: TokenStream) -> TokenStream {
             ) -> ::std::option::Option<u32> {
                 #next_field_access
             }
+
+            #header_len_fn
+
+            #packet_len_fn
         }
 
         impl ::std::fmt::Display

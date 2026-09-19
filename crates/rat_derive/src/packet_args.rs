@@ -7,8 +7,10 @@ use crate::helpers::{map_primitive_to_zerocopy, normilze_field};
 
 pub(crate) struct PacketArgs {
     pub layer: Ident,
-    pub parent: Option<Ident>,
+    pub parent: Option<syn::Path>,
     pub selector: Expr,
+    pub header_len: Option<Expr>,
+    pub packet_len: Option<Expr>,
 }
 
 impl Parse for PacketArgs {
@@ -16,6 +18,8 @@ impl Parse for PacketArgs {
         let mut layer = None;
         let mut parent = None;
         let mut selector = None;
+        let mut header_len = None;
+        let mut packet_len = None;
 
         while !input.is_empty() {
             let key: Ident = input.parse()?;
@@ -34,12 +38,20 @@ impl Parse for PacketArgs {
                     selector = Some(input.parse()?);
                 }
 
+                "header_len" => {
+                    header_len = Some(input.parse()?);
+                }
+
+                "packet_len" => {
+                    packet_len = Some(input.parse()?);
+                }
+
                 other => {
                     return Err(syn::Error::new(
                         key.span(),
                         format!(
                             "unknown packet() key `{other}`, expected \
-                             `layer`, `parent`, or `selector`"
+                             `layer`, `parent`, `selector`, `header_len`, or `packet_len`"
                         ),
                     ));
                 }
@@ -52,11 +64,11 @@ impl Parse for PacketArgs {
 
         Ok(Self {
             layer: layer.ok_or_else(|| syn::Error::new(input.span(), "missing `layer`"))?,
-
             parent,
-
             selector: selector
                 .ok_or_else(|| syn::Error::new(input.span(), "missing `selector`"))?,
+            header_len,
+            packet_len,
         })
     }
 }
