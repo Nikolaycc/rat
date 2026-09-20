@@ -16,6 +16,7 @@ where
     Ok(())
 }
 
+#[allow(unused)]
 pub fn open<S>(path: &S, oflag: i32) -> std::io::Result<OwnedFd>
 where
     S: AsRef<Path>,
@@ -29,6 +30,7 @@ where
     syscall!(open(cpath.as_ptr(), oflag)).map(|fd| unsafe { OwnedFd::from_raw_fd(fd) })
 }
 
+#[allow(unused)]
 pub fn read<F>(fd: &F, buf: &mut [u8]) -> std::io::Result<usize>
 where
     F: AsRawFd + AsFd,

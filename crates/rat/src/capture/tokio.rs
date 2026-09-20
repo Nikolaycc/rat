@@ -1,6 +1,10 @@
 use bytes::Bytes;
 use object_pool::{Pool, ReusableOwned};
-use std::{io, os::fd::OwnedFd, sync::Arc};
+use std::{
+    fs::File,
+    io::{self, Read},
+    sync::Arc,
+};
 use thiserror::Error;
 use tokio::{
     io::{Interest, unix::AsyncFd},
@@ -10,7 +14,7 @@ use tokio::{
 
 use crate::{
     capture::sync::{Active, Capture, CaptureIter, RawPacket},
-    io::{read, set_nonblocking},
+    io::set_nonblocking,
     parser::Parser,
 };
 
@@ -37,7 +41,7 @@ pub struct AsyncBatch {
 }
 
 pub struct AsyncCapture {
-    fd: AsyncFd<OwnedFd>,
+    fd: AsyncFd<File>,
     pool: CapturePool,
     available: Arc<Semaphore>,
 }
@@ -86,7 +90,7 @@ impl AsyncCapture {
                 .try_pull_owned()
                 .expect("semaphore and capture pool are out of sync");
 
-            match ready.try_io(|fd| read(fd.get_ref(), &mut buffer)) {
+            match ready.try_io(|fd| fd.get_ref().read(&mut buffer)) {
                 Ok(Ok(size)) => {
                     return Ok(AsyncBatch {
                         buf: buffer,

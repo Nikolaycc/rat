@@ -1,15 +1,15 @@
 use bytes::{Bytes, BytesMut};
 use libc::{BIOCGBLEN, BIOCIMMEDIATE, BIOCSETIF};
-use std::io::ErrorKind;
+use std::fs::File;
+use std::fs::OpenOptions;
+use std::io::{ErrorKind, Read};
 use std::marker::PhantomData;
-use std::os::fd::{AsRawFd, OwnedFd};
-use std::path::Path;
+use std::os::fd::AsRawFd;
 
 use crate::addrs::NetworkInterface;
 use crate::addrs::NetworkInterfaceMap;
 use crate::capture::bpf::BPFFrame;
 use crate::capture::tokio::AsyncCapture;
-use crate::io::{open, read};
 use crate::utils::syscall;
 
 #[derive(Debug)]
@@ -99,7 +99,7 @@ impl State for Active {}
 impl State for Inactive {}
 
 pub struct Capture<S: State> {
-    pub(crate) fd: OwnedFd,
+    pub(crate) fd: File,
     buf: BytesMut,
     pub(crate) buf_len: usize,
     interface: NetworkInterface,
@@ -109,8 +109,8 @@ pub struct Capture<S: State> {
 impl Capture<Inactive> {
     #[must_use]
     pub fn new(ifname: &str) -> std::io::Result<Capture<Active>> {
-        let bpf_path = Path::new("/dev/bpf0");
-        let fd = open(&bpf_path, libc::O_RDWR)?;
+        let fd = OpenOptions::new().read(true).open("/dev/bpf0")?;
+        // let fd: OwnedFd = fd.into();
 
         let raw_fd = fd.as_raw_fd();
 
@@ -166,7 +166,7 @@ impl Iterator for Capture<Active> {
     fn next(&mut self) -> Option<Self::Item> {
         self.buf.fill(0);
 
-        let _size = match read(&self.fd, &mut self.buf) {
+        let _size = match self.fd.read(&mut self.buf) {
             Err(why) => panic!("couldn't read {why}"),
             Ok(size) => size,
         };
