@@ -5,6 +5,17 @@ use std::path::Path;
 
 use crate::utils::syscall;
 
+pub fn set_nonblocking<F>(fd: &F) -> std::io::Result<()>
+where
+    F: AsRawFd,
+{
+    let raw = fd.as_raw_fd();
+    let flags = syscall!(fcntl(raw, libc::F_GETFL)).expect("here in flags");
+    let _res =
+        syscall!(fcntl(raw, libc::F_SETFL, flags | libc::O_NONBLOCK,)).expect("here is F_SETFL");
+    Ok(())
+}
+
 pub fn open<S>(path: &S, oflag: i32) -> std::io::Result<OwnedFd>
 where
     S: AsRef<Path>,

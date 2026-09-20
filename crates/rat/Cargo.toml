@@ -3,13 +3,19 @@ name = "rat"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+default = ["tokio"]
+tokio = ["dep:tokio"]
+
 [dependencies]
 bytes = "1.12.1"
 libc = "0.2.186"
+tokio = { version = "1.53.1", optional = true, features = ["net", "rt", "sync"] }
 
 zerocopy = { workspace = true }
 rat_derive = { workspace = true }
 thiserror = "2.0.20"
+object-pool = "0.6.0"
 
 [lints]
 workspace = true

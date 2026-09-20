@@ -22,18 +22,18 @@ pub struct ParseIter<'a> {
     data: Option<Bytes>,
 }
 
-pub struct Parser<'a> {
-    registry: &'a ProtocolRegistry,
+pub struct Parser {
+    registry: ProtocolRegistry,
 }
 
-impl<'a> Parser<'a> {
-    pub const fn new(registry: &'a ProtocolRegistry) -> Self {
+impl Parser {
+    pub const fn new(registry: ProtocolRegistry) -> Self {
         Self { registry }
     }
 
     pub fn parse(&self, data: Bytes) -> ParseIter<'_> {
         ParseIter {
-            registry: self.registry,
+            registry: &self.registry,
             current: Some(self.registry.root()),
             data: Some(data),
         }

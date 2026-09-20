@@ -1,12 +1,14 @@
 use bytes::{Bytes, BytesMut};
 use libc::{BIOCGBLEN, BIOCIMMEDIATE, BIOCSETIF};
 use std::io::ErrorKind;
+use std::marker::PhantomData;
 use std::os::fd::{AsRawFd, OwnedFd};
 use std::path::Path;
 
 use crate::addrs::NetworkInterface;
 use crate::addrs::NetworkInterfaceMap;
-use crate::bpf::BPFFrame;
+use crate::capture::bpf::BPFFrame;
+use crate::capture::tokio::AsyncCapture;
 use crate::io::{open, read};
 use crate::utils::syscall;
 
@@ -42,8 +44,8 @@ impl IntoIterator for CaptureBatch {
 }
 
 pub struct CaptureIter {
-    data: Bytes,
-    offset: usize,
+    pub(crate) data: Bytes,
+    pub(crate) offset: usize,
 }
 
 impl Iterator for CaptureIter {
@@ -88,48 +90,25 @@ impl Iterator for CaptureIter {
     }
 }
 
-pub struct Capture {
-    fd: OwnedFd,
+pub trait State {}
+
+pub struct Active;
+pub struct Inactive;
+
+impl State for Active {}
+impl State for Inactive {}
+
+pub struct Capture<S: State> {
+    pub(crate) fd: OwnedFd,
     buf: BytesMut,
+    pub(crate) buf_len: usize,
     interface: NetworkInterface,
+    _p: PhantomData<S>,
 }
 
-impl Capture {
-    #[cfg(any(
-        target_os = "netbsd",
-        target_os = "openbsd",
-        target_os = "freebsd",
-        target_os = "macos"
-    ))]
-    #[inline]
-    pub fn set_interface(&mut self, interface: NetworkInterface) -> std::io::Result<()> {
-        let mut ifreq = interface.to_interface_req()?;
-        syscall!(ioctl(self.fd.as_raw_fd(), BIOCSETIF, &mut ifreq.0)).map(|_| {
-            self.interface = interface;
-        })
-    }
-
-    #[cfg(any(
-        target_os = "netbsd",
-        target_os = "openbsd",
-        target_os = "freebsd",
-        target_os = "macos"
-    ))]
-    #[inline]
-    pub fn set_interface_with_name(&mut self, name: &str) -> std::io::Result<()> {
-        let interface = NetworkInterface::from_name(name)?;
-
-        self.set_interface(interface)
-    }
-
+impl Capture<Inactive> {
     #[must_use]
-    #[cfg(any(
-        target_os = "netbsd",
-        target_os = "openbsd",
-        target_os = "freebsd",
-        target_os = "macos"
-    ))]
-    pub fn new(ifname: &str) -> std::io::Result<Self> {
+    pub fn new(ifname: &str) -> std::io::Result<Capture<Active>> {
         let bpf_path = Path::new("/dev/bpf0");
         let fd = open(&bpf_path, libc::O_RDWR)?;
 
@@ -143,21 +122,45 @@ impl Capture {
         let ifreq = interface.to_interface_req()?;
         syscall!(ioctl(raw_fd, BIOCSETIF, &ifreq.0))?;
 
-        let mut buflen: u32 = 0;
-        syscall!(ioctl(raw_fd, BIOCGBLEN, &mut buflen))?;
+        let mut buf_len: u32 = 0;
+        syscall!(ioctl(raw_fd, BIOCGBLEN, &mut buf_len))?;
 
         let enable: u32 = 1;
         syscall!(ioctl(raw_fd, BIOCIMMEDIATE, &enable))?;
 
-        Ok(Self {
+        Ok(Capture {
             fd,
-            buf: BytesMut::zeroed(buflen as usize),
+            buf: BytesMut::zeroed(buf_len as usize),
+            buf_len: buf_len as usize,
             interface,
+            _p: PhantomData,
         })
     }
 }
 
-impl Iterator for Capture {
+impl Capture<Active> {
+    #[inline]
+    pub fn set_interface(&mut self, interface: NetworkInterface) -> std::io::Result<()> {
+        let mut ifreq = interface.to_interface_req()?;
+        syscall!(ioctl(self.fd.as_raw_fd(), BIOCSETIF, &mut ifreq.0)).map(|_| {
+            self.interface = interface;
+        })
+    }
+
+    #[inline]
+    pub fn set_interface_with_name(&mut self, name: &str) -> std::io::Result<()> {
+        let interface = NetworkInterface::from_name(name)?;
+
+        self.set_interface(interface)
+    }
+
+    #[inline]
+    pub fn as_async(self) -> std::io::Result<AsyncCapture> {
+        AsyncCapture::from(self)
+    }
+}
+
+impl Iterator for Capture<Active> {
     type Item = CaptureBatch;
 
     fn next(&mut self) -> Option<Self::Item> {
