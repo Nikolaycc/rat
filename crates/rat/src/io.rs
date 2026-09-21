@@ -10,9 +10,8 @@ where
     F: AsRawFd,
 {
     let raw = fd.as_raw_fd();
-    let flags = syscall!(fcntl(raw, libc::F_GETFL)).expect("here in flags");
-    let _res =
-        syscall!(fcntl(raw, libc::F_SETFL, flags | libc::O_NONBLOCK,)).expect("here is F_SETFL");
+    let flags = syscall!(fcntl(raw, libc::F_GETFL))?;
+    let _res = syscall!(fcntl(raw, libc::F_SETFL, flags | libc::O_NONBLOCK))?;
     Ok(())
 }
 

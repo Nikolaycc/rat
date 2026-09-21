@@ -143,12 +143,12 @@ impl SockAddr {
 }
 
 #[derive(Debug)]
-pub struct NetworkInterface {
+pub struct IFace {
     pub name: Arc<str>,
     pub index: u32,
 }
 
-impl NetworkInterface {
+impl IFace {
     pub fn from_name(ifname: &str) -> io::Result<Self> {
         let name =
             CString::new(ifname).map_err(|error| io::Error::new(ErrorKind::InvalidInput, error))?;
@@ -171,7 +171,7 @@ impl NetworkInterface {
 }
 
 #[derive(Debug)]
-pub struct NetworkInterfaceComp {
+pub struct IFaceComp {
     /// Network address of this interface.
     pub address: Option<SockAddr>,
     /// Netmask of this interface.
@@ -180,7 +180,7 @@ pub struct NetworkInterfaceComp {
     pub destination: Option<SockAddr>,
 }
 
-impl NetworkInterfaceComp {
+impl IFaceComp {
     pub(crate) fn from_ifaddrs(ifa: &libc::ifaddrs) -> (String, Self) {
         let ifa_name = unsafe { ffi::CStr::from_ptr(ifa.ifa_name) };
         let ifa_addr = unsafe {
@@ -222,12 +222,12 @@ impl NetworkInterfaceComp {
     }
 }
 
-pub struct NetworkInterfaceIterator {
+pub struct IFaceIterator {
     base: *mut libc::ifaddrs,
     next: *mut libc::ifaddrs,
 }
 
-impl Drop for NetworkInterfaceIterator {
+impl Drop for IFaceIterator {
     fn drop(&mut self) {
         unsafe {
             libc::freeifaddrs(self.base);
@@ -235,14 +235,14 @@ impl Drop for NetworkInterfaceIterator {
     }
 }
 
-impl Iterator for NetworkInterfaceIterator {
-    type Item = (String, NetworkInterfaceComp);
+impl Iterator for IFaceIterator {
+    type Item = (String, IFaceComp);
 
     fn next(&mut self) -> Option<<Self as Iterator>::Item> {
         match unsafe { self.next.as_ref() } {
             Some(ifaddr) => {
                 self.next = ifaddr.ifa_next;
-                Some(NetworkInterfaceComp::from_ifaddrs(ifaddr))
+                Some(IFaceComp::from_ifaddrs(ifaddr))
             }
             None => None,
         }
@@ -250,11 +250,11 @@ impl Iterator for NetworkInterfaceIterator {
 }
 
 #[derive(Debug)]
-pub struct NetworkInterfaceMap {
-    map: HashMap<String, Vec<NetworkInterfaceComp>>,
+pub struct IFaceMap {
+    map: HashMap<String, Vec<IFaceComp>>,
 }
 
-impl fmt::Display for NetworkInterfaceMap {
+impl fmt::Display for IFaceMap {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for (name, addrs) in &self.map {
             writeln!(f, "{name}")?;
@@ -280,16 +280,16 @@ impl fmt::Display for NetworkInterfaceMap {
     }
 }
 
-impl NetworkInterfaceMap {
+impl IFaceMap {
     pub fn new() -> io::Result<Self> {
         let ifs = getifaddrs()?;
 
-        Ok(NetworkInterfaceMap::from_iterator(ifs))
+        Ok(IFaceMap::from_iterator(ifs))
     }
 
     #[must_use]
-    pub fn from_iterator(ifs: NetworkInterfaceIterator) -> Self {
-        let mut map = HashMap::<String, Vec<NetworkInterfaceComp>>::new();
+    pub fn from_iterator(ifs: IFaceIterator) -> Self {
+        let mut map = HashMap::<String, Vec<IFaceComp>>::new();
 
         for interface in ifs {
             map.entry(interface.0.clone())
@@ -301,7 +301,7 @@ impl NetworkInterfaceMap {
     }
 
     #[inline]
-    pub fn get_components<N>(&self, name: &N) -> Option<&Vec<NetworkInterfaceComp>>
+    pub fn get_components<N>(&self, name: &N) -> Option<&Vec<IFaceComp>>
     where
         N: AsRef<str> + ?Sized,
     {
@@ -309,12 +309,12 @@ impl NetworkInterfaceMap {
     }
 
     #[inline]
-    pub fn get<N>(&self, name: &N) -> Option<(NetworkInterface, &Vec<NetworkInterfaceComp>)>
+    pub fn get<N>(&self, name: &N) -> Option<(IFace, &Vec<IFaceComp>)>
     where
         N: AsRef<str> + ?Sized,
     {
         let comps = self.map.get(name.as_ref())?;
-        let Ok(interface) = NetworkInterface::from_name(name.as_ref()) else {
+        let Ok(interface) = IFace::from_name(name.as_ref()) else {
             return None;
         };
 
@@ -333,11 +333,11 @@ impl NetworkInterfaceMap {
 pub struct InterfaceReq(pub libc::ifreq);
 
 #[inline]
-pub(in crate::addrs) fn getifaddrs() -> io::Result<NetworkInterfaceIterator> {
+pub(in crate::addrs) fn getifaddrs() -> io::Result<IFaceIterator> {
     let mut addrs = mem::MaybeUninit::<*mut libc::ifaddrs>::uninit();
 
     unsafe {
-        syscall!(getifaddrs(addrs.as_mut_ptr())).map(|_| NetworkInterfaceIterator {
+        syscall!(getifaddrs(addrs.as_mut_ptr())).map(|_| IFaceIterator {
             base: addrs.assume_init(),
             next: addrs.assume_init(),
         })

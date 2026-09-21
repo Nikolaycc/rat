@@ -6,8 +6,8 @@ use std::io::{ErrorKind, Read};
 use std::marker::PhantomData;
 use std::os::fd::AsRawFd;
 
-use crate::addrs::NetworkInterface;
-use crate::addrs::NetworkInterfaceMap;
+use crate::addrs::IFace;
+use crate::addrs::IFaceMap;
 use crate::capture::bpf::BPFFrame;
 use crate::capture::tokio::AsyncCapture;
 use crate::utils::syscall;
@@ -102,7 +102,7 @@ pub struct Capture<S: State> {
     pub(crate) fd: File,
     buf: BytesMut,
     pub(crate) buf_len: usize,
-    interface: NetworkInterface,
+    interface: IFace,
     _p: PhantomData<S>,
 }
 
@@ -114,7 +114,7 @@ impl Capture<Inactive> {
 
         let raw_fd = fd.as_raw_fd();
 
-        let interfaces = NetworkInterfaceMap::new()?;
+        let interfaces = IFaceMap::new()?;
         let (interface, _) = interfaces
             .get(ifname)
             .ok_or(std::io::Error::from(ErrorKind::NotFound))?;
@@ -140,7 +140,7 @@ impl Capture<Inactive> {
 
 impl Capture<Active> {
     #[inline]
-    pub fn set_interface(&mut self, interface: NetworkInterface) -> std::io::Result<()> {
+    pub fn set_interface(&mut self, interface: IFace) -> std::io::Result<()> {
         let mut ifreq = interface.to_interface_req()?;
         syscall!(ioctl(self.fd.as_raw_fd(), BIOCSETIF, &mut ifreq.0)).map(|_| {
             self.interface = interface;
@@ -149,7 +149,7 @@ impl Capture<Active> {
 
     #[inline]
     pub fn set_interface_with_name(&mut self, name: &str) -> std::io::Result<()> {
-        let interface = NetworkInterface::from_name(name)?;
+        let interface = IFace::from_name(name)?;
 
         self.set_interface(interface)
     }
