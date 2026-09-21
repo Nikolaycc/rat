@@ -122,16 +122,20 @@ impl fmt::Display for SockAddr {
 
 impl SockAddr {
     pub fn from_libc_sockaddr(sa: &libc::sockaddr) -> io::Result<Self> {
-        let family = unsafe { ptr::read(sa) };
-
-        match libc::c_int::from(family.sa_family) {
+        match libc::c_int::from(sa.sa_family) {
             libc::AF_INET => {
-                let sin = unsafe { *(ptr::from_ref(sa).cast::<libc::sockaddr_in>()) };
+                let sin_ptr = ptr::from_ref(sa).cast::<libc::sockaddr_in>();
+
+                let sin = unsafe { ptr::read(sin_ptr) };
+
                 let bits = u32::from_be(sin.sin_addr.s_addr);
                 Ok(SockAddr::IpV4(net::Ipv4Addr::from(bits)))
             }
             libc::AF_INET6 => {
-                let sin6 = unsafe { *(ptr::from_ref(sa).cast::<libc::sockaddr_in6>()) };
+                let sin6_ptr = ptr::from_ref(sa).cast::<libc::sockaddr_in6>();
+
+                let sin6 = unsafe { ptr::read(sin6_ptr) };
+
                 Ok(SockAddr::IpV6(net::Ipv6Addr::from(sin6.sin6_addr.s6_addr)))
             }
             _ => Err(io::Error::new(
