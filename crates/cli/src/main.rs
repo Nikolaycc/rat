@@ -2,6 +2,7 @@ use rat::capture::Capture;
 use rat::capture::parallel::ParallelCapture;
 use rat::interface::IFaceMap;
 use rat::parser::Parser;
+use rat::protocols::tcp::TCPFrame;
 use rat::registry::ProtocolRegistry;
 
 use clap::Parser as ClapParser;
@@ -36,18 +37,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let cap = Capture::open(&args.interface.unwrap())?;
 
-    let registry = ProtocolRegistry::builder()
-        .defaults()
-        .build()
-        .expect("Failed to build ProtocolRegistry");
+    let registry = ProtocolRegistry::builder().defaults().build()?;
     let parser = Parser::new(registry);
 
-    let mut cap = ParallelCapture::from(cap, parser, args.workers)?;
+    let mut parallel = ParallelCapture::from(cap, parser, args.workers)?;
 
-    cap.run_loop(|batch, parser| {
+    parallel.run_loop(|batch, parser| {
         for raw in batch {
             for layer in parser.parse(raw.bytes()) {
-                let layer = layer.unwrap();
+                let Ok(layer) = layer else { continue };
 
                 print!("{layer}");
             }

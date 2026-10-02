@@ -8,30 +8,47 @@ A nimble network sniffer that scurries through your traffic
 Basic example
 
 ```rs
-    let cap = Capture::new("en1")?;
-
+#[packet(
+    layer = Network,
+    parent = IPv4Frame,
+    selector = 89
+)]
+pub struct OSPFFrame {
+    pub version: u8,
+    pub typ: u8,
+    pub packet_length: u16,
+    pub router_id: u32,
+    pub area_id: u32,
+    pub checksum: u16,
+    pub autype: u16,
+    pub authentication: u64,
+}
+    
+fn main() -> Result<(), dyn Error> {
+    let capture = Capture::open("eth0")?;
+    
     let registry = ProtocolRegistry::builder()
         .defaults()
         .register::<OSPFFrame>()
-        .build()
-        .expect("Failed to build ProtocolRegistry");
-    let parser = Parser::new(&registry);
+        .build()?;
+    let parser = Parser::new(registry);
     
-    for batch in cap {
-        for packet in batch {
-            for layer in parser.parse(packet.bytes()) {
-                let layer = layer.unwrap();
-                println!("{layer}");
+    let mut parallel = ParallelCapture::from(capture, parser, 4)?;
+    
+    parallel.run_loop(|batch, parser| {
+        for raw in batch {
+            for layer in parser.parse(raw.bytes()) {
+                let Ok(layer) = layer else { continue };
 
                 if let Some(tcp) = layer.get::<TCPFrame>() {
-                    if tcp.source_port == 443 || tcp.destination_port == 443 {
-                        println!("Bingo!")
-                    }
+                    println!("TCP: {tcp:?}");
                 }
             }
         }
-    }
+    })?;
 
+    Ok(())
+}
 ```
 
 ## Contributing
