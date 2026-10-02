@@ -1,6 +1,7 @@
 use bytes::Bytes;
 use std::any::TypeId;
 use std::fmt;
+use std::sync::Arc;
 use thiserror::Error;
 
 use crate::error::ParseError;
@@ -45,14 +46,17 @@ pub struct ParseIter<'a> {
     data: Option<Bytes>,
 }
 
+#[derive(Clone)]
 pub struct Parser {
-    registry: ProtocolRegistry,
+    registry: Arc<ProtocolRegistry>,
 }
 
 impl Parser {
     #[must_use]
-    pub const fn new(registry: ProtocolRegistry) -> Self {
-        Self { registry }
+    pub fn new(registry: ProtocolRegistry) -> Self {
+        Self {
+            registry: Arc::new(registry),
+        }
     }
 
     #[must_use]

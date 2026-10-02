@@ -1,11 +1,10 @@
 use rat::capture::Capture;
-use rat::capture::tokio::AsyncCapture;
+use rat::capture::parallel::ParallelCapture;
 use rat::interface::IFaceMap;
-use rat::parser::{Parser, ParserError};
+use rat::parser::Parser;
 use rat::registry::ProtocolRegistry;
 
 use clap::Parser as ClapParser;
-use std::sync::Arc;
 
 #[derive(ClapParser, Debug)]
 #[command(version, about, long_about = None)]
@@ -25,8 +24,7 @@ struct Args {
     workers: usize,
 }
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
 
     if args.show_interfaces {
@@ -37,28 +35,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let cap = Capture::open(&args.interface.unwrap())?;
-    let mut cap = AsyncCapture::with_workers(cap, args.workers)?;
 
     let registry = ProtocolRegistry::builder()
         .defaults()
         .build()
         .expect("Failed to build ProtocolRegistry");
-    let parser = Arc::new(Parser::new(registry));
+    let parser = Parser::new(registry);
 
-    cap.run_loop(parser, {
-        async move |parser, batch| {
-            for raw in batch {
-                for layer in parser.parse(raw.bytes()) {
-                    let layer = layer.unwrap();
+    let mut cap = ParallelCapture::from(cap, parser, args.workers)?;
 
-                    print!("{layer}");
-                }
+    cap.run_loop(|batch, parser| {
+        for raw in batch {
+            for layer in parser.parse(raw.bytes()) {
+                let layer = layer.unwrap();
+
+                print!("{layer}");
             }
-
-            Ok::<(), ParserError>(())
         }
-    })
-    .await?;
+    })?;
 
     Ok(())
 }

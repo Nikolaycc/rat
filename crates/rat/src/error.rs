@@ -17,3 +17,18 @@ pub enum ParseError {
     #[error("packet data is not correctly aligned")]
     InvalidAlignment,
 }
+
+#[derive(Error, Debug, PartialEq)]
+pub enum PoolCreationError {
+    #[error("size can't be zero")]
+    ZeroSize,
+}
+
+#[derive(Debug, Error)]
+pub enum CaptureLoopError {
+    #[error("could't create thread pool")]
+    ThreadPoolCreation(#[from] PoolCreationError),
+
+    #[error("pool are out of sync")]
+    PoolFailed,
+}

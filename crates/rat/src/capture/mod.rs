@@ -1,9 +1,11 @@
 use bytes::{Bytes, BytesMut};
 use libc::{BIOCGBLEN, BIOCIMMEDIATE, BIOCSETIF};
+use object_pool::Pool;
 use std::fs::File;
 use std::io::Read;
 use std::marker::PhantomData;
 use std::os::fd::AsRawFd;
+use std::sync::Arc;
 
 use crate::capture::bpf::BPFFrame;
 use crate::capture::bpf::open_bpf_device;
@@ -15,6 +17,10 @@ pub mod bpf;
 
 #[cfg(feature = "experimental")]
 pub mod tokio;
+
+pub mod parallel;
+
+pub type BufferPool = Arc<Pool<Box<[u8]>>>;
 
 #[derive(Debug)]
 pub struct RawPacket(pub Bytes);

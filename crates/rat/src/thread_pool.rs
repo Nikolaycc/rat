@@ -1,13 +1,50 @@
-use thiserror::Error;
+use std::{
+    sync::{Arc, Mutex, mpsc},
+    thread,
+};
 
-#[derive(Error, Debug, PartialEq)]
-pub enum PoolCreationError {
-    #[error("size can't be zero")]
-    ZeroSize,
+use crate::error::PoolCreationError;
+
+type Job = Box<dyn FnOnce() + Send + 'static>;
+
+#[derive(Debug)]
+pub struct Worker {
+    id: usize,
+    thread: Option<thread::JoinHandle<()>>,
 }
 
-#[derive(Debug, PartialEq)]
-pub struct ThreadPool;
+impl Worker {
+    pub fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Job>>>) -> Self {
+        let thread = thread::spawn(move || {
+            loop {
+                let message = receiver.lock().unwrap().recv();
+
+                match message {
+                    Ok(job) => {
+                        println!("Worker {id} got a job; executing.");
+
+                        job();
+                    }
+                    Err(_) => {
+                        println!("Worker {id} disconnected; shutting down.");
+                        break;
+                    }
+                }
+            }
+        });
+
+        Worker {
+            id,
+            thread: Some(thread),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct ThreadPool {
+    workers: Vec<Worker>,
+    sender: Option<mpsc::Sender<Job>>,
+}
 
 impl ThreadPool {
     /// Create a new `ThreadPool`.
@@ -22,7 +59,19 @@ impl ThreadPool {
             return Err(PoolCreationError::ZeroSize);
         }
 
-        Ok(ThreadPool)
+        let (sender, receiver) = mpsc::channel();
+        let receiver = Arc::new(Mutex::new(receiver));
+
+        let mut workers = Vec::with_capacity(size);
+
+        for id in 0..size {
+            workers.push(Worker::new(id, Arc::clone(&receiver)));
+        }
+
+        Ok(ThreadPool {
+            workers,
+            sender: Some(sender),
+        })
     }
 
     /// Executes a function on a worker thread.
@@ -32,6 +81,23 @@ impl ThreadPool {
     where
         F: FnOnce() + Send + 'static,
     {
+        let job = Box::new(f);
+
+        self.sender.as_ref().unwrap().send(job).unwrap()
+    }
+}
+
+impl Drop for ThreadPool {
+    fn drop(&mut self) {
+        drop(self.sender.take());
+
+        for worker in &mut self.workers {
+            println!("Shutting down worker {}", worker.id);
+
+            if let Some(thread) = worker.thread.take() {
+                thread.join().unwrap();
+            }
+        }
     }
 }
 
@@ -41,9 +107,9 @@ mod tests {
 
     #[test]
     fn zero_size_pool() {
-        let pool = ThreadPool::new(0);
+        let pool = ThreadPool::new(0).unwrap_err();
 
-        assert_eq!(pool, Err(PoolCreationError::ZeroSize))
+        assert_eq!(pool, PoolCreationError::ZeroSize)
     }
 
     #[test]

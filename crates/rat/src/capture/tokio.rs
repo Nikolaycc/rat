@@ -13,7 +13,7 @@ use tokio::{
 };
 
 use crate::{
-    capture::{Active, Capture, CaptureIter, RawPacket},
+    capture::{Active, BufferPool, Capture, CaptureIter, RawPacket},
     io::set_nonblocking,
     parser::Parser,
 };
@@ -32,8 +32,6 @@ pub enum RunError<E> {
     Join(#[source] tokio::task::JoinError),
 }
 
-type CapturePool = Arc<Pool<Box<[u8]>>>;
-
 pub struct AsyncBatch {
     buf: ReusableOwned<Box<[u8]>>,
     len: usize,
@@ -42,7 +40,7 @@ pub struct AsyncBatch {
 
 pub struct AsyncCapture {
     fd: AsyncFd<File>,
-    pool: CapturePool,
+    pool: BufferPool,
     available: Arc<Semaphore>,
 }
 

@@ -7,7 +7,7 @@ pub mod packet;
 pub mod parser;
 pub mod protocols;
 pub mod registry;
-mod thread_pool;
+pub mod thread_pool;
 mod utils;
 
 #[doc(inline)]
