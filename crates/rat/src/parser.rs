@@ -1,10 +1,33 @@
 use bytes::Bytes;
 use std::any::TypeId;
 use std::fmt;
+use thiserror::Error;
 
+use crate::error::ParseError;
 use crate::packet::Packet;
 use crate::registry::{FormatFn, ProtocolId, ProtocolRegistry};
-use crate::utils::ParseError;
+
+#[derive(Debug, Error)]
+pub enum ParserError {
+    #[error("failed to parse protocol `{protocol}`: {source}")]
+    Protocol {
+        protocol: &'static str,
+
+        #[source]
+        source: ParseError,
+    },
+
+    #[error(
+        "invalid protocol bounds for `{protocol}`: \
+         header_len={header_len}, packet_len={packet_len}, available={available}"
+    )]
+    InvalidBounds {
+        protocol: &'static str,
+        header_len: usize,
+        packet_len: usize,
+        available: usize,
+    },
+}
 
 pub struct ParsedLayer {
     protocol: ProtocolId,
@@ -27,10 +50,12 @@ pub struct Parser {
 }
 
 impl Parser {
+    #[must_use]
     pub const fn new(registry: ProtocolRegistry) -> Self {
         Self { registry }
     }
 
+    #[must_use]
     pub fn parse(&self, data: Bytes) -> ParseIter<'_> {
         ParseIter {
             registry: &self.registry,
@@ -83,7 +108,7 @@ impl fmt::Display for ParsedLayer {
 }
 
 impl Iterator for ParseIter<'_> {
-    type Item = Result<ParsedLayer, ParseError>;
+    type Item = Result<ParsedLayer, ParserError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let protocol = self.current?;
@@ -101,11 +126,14 @@ impl Iterator for ParseIter<'_> {
 
         let meta = match parse(&data) {
             Ok(meta) => meta,
-            Err(error) => {
+            Err(source) => {
                 self.current = None;
                 self.data = None;
 
-                return Some(Err(error));
+                return Some(Err(ParserError::Protocol {
+                    protocol: descriptor.name,
+                    source,
+                }));
             }
         };
 
@@ -113,7 +141,10 @@ impl Iterator for ParseIter<'_> {
             self.current = None;
             self.data = None;
 
-            return Some(Err(ParseError::InvalidValue));
+            return Some(Err(ParserError::Protocol {
+                protocol: descriptor.name,
+                source: ParseError::InvalidValue,
+            }));
         }
 
         let next_protocol = meta

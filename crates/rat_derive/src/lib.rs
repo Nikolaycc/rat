@@ -176,7 +176,7 @@ pub fn packet(attr: TokenStream, item: TokenStream) -> TokenStream {
                 data: &[u8],
             ) -> ::std::result::Result<
                 &Self,
-                #rat_path::utils::ParseError,
+                #rat_path::error::ParseError,
             > {
                 let size =
                     ::std::mem::size_of::<Self>();
@@ -184,14 +184,14 @@ pub fn packet(attr: TokenStream, item: TokenStream) -> TokenStream {
                 let data = data
                     .get(..size)
                     .ok_or(
-                        #rat_path::utils::ParseError
+                        #rat_path::error::ParseError
                             ::InvalidValue
                     )?;
 
                 <Self as ::zerocopy::TryFromBytes>
                     ::try_ref_from_bytes(data)
                     .map_err(|_| {
-                        #rat_path::utils::ParseError
+                        #rat_path::error::ParseError
                             ::InvalidValue
                     })
             }

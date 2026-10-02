@@ -1,4 +1,4 @@
-use crate::utils::ParseError;
+use crate::error::ParseError;
 
 pub enum Layer {
     Physical,

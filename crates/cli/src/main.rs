@@ -1,8 +1,8 @@
-use rat::capture::sync::Capture;
+use rat::capture::Capture;
 use rat::capture::tokio::AsyncCapture;
-use rat::parser::Parser;
+use rat::interface::IFaceMap;
+use rat::parser::{Parser, ParserError};
 use rat::registry::ProtocolRegistry;
-use rat::utils::ParseError;
 
 use clap::Parser as ClapParser;
 use std::sync::Arc;
@@ -11,7 +11,15 @@ use std::sync::Arc;
 #[command(version, about, long_about = None)]
 struct Args {
     #[arg(short, long)]
-    interface: String,
+    show_interfaces: bool,
+
+    #[arg(
+        short,
+        long,
+        required_unless_present = "show_interfaces",
+        conflicts_with = "show_interfaces"
+    )]
+    interface: Option<String>,
 
     #[arg(short, long, default_value_t = 4)]
     workers: usize,
@@ -20,7 +28,15 @@ struct Args {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
-    let cap = Capture::new(&args.interface)?;
+
+    if args.show_interfaces {
+        let ifaces = IFaceMap::new()?;
+        println!("{ifaces}");
+
+        return Ok(());
+    }
+
+    let cap = Capture::open(&args.interface.unwrap())?;
     let mut cap = AsyncCapture::with_workers(cap, args.workers)?;
 
     let registry = ProtocolRegistry::builder()
@@ -31,18 +47,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     cap.run_loop(parser, {
         async move |parser, batch| {
-            let spawned_id = tokio::task::id();
-            println!("Spawned task ID: {:?}", spawned_id);
-
             for raw in batch {
                 for layer in parser.parse(raw.bytes()) {
-                    let layer = layer?;
+                    let layer = layer.unwrap();
 
-                    println!("{layer}");
+                    print!("{layer}");
                 }
             }
 
-            Ok::<(), ParseError>(())
+            Ok::<(), ParserError>(())
         }
     })
     .await?;

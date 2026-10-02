@@ -13,7 +13,7 @@ use tokio::{
 };
 
 use crate::{
-    capture::sync::{Active, Capture, CaptureIter, RawPacket},
+    capture::{Active, Capture, CaptureIter, RawPacket},
     io::set_nonblocking,
     parser::Parser,
 };
@@ -53,13 +53,11 @@ impl AsRef<[u8]> for AsyncBatch {
 }
 
 impl AsyncCapture {
-    #[must_use]
     #[inline]
     pub fn from(cap: Capture<Active>) -> io::Result<Self> {
         AsyncCapture::with_workers(cap, DEFAULT_MAX_WORKER)
     }
 
-    #[must_use]
     pub fn with_workers(cap: Capture<Active>, workers: usize) -> io::Result<Self> {
         set_nonblocking(&cap.fd)?;
 

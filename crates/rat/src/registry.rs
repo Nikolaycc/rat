@@ -5,12 +5,12 @@ use std::{
 };
 use thiserror::Error;
 
+use crate::error::ParseError;
 use crate::packet::Packet;
 use crate::protocols::{
     arp::ARPFrame, ethernet::EthernetFrame, icmp::ICMPFrame, ipv4::IPv4Frame, ipv6::IPv6Frame,
     ospf::OSPFFrame, tcp::TCPFrame, udp::UDPFrame,
 };
-use crate::utils::ParseError;
 
 #[derive(Error, Debug)]
 pub enum RegistryError {
@@ -18,10 +18,10 @@ pub enum RegistryError {
     TooManyProtocols { max: usize },
 
     #[error("protocol {0} is registred more than once")]
-    DuplicateProtocol(String),
+    DuplicateProtocol(&'static str),
 
     #[error("parent protocol required by '{0}' is not registred")]
-    MissingParent(String),
+    MissingParent(&'static str),
 
     #[error("protocol registry has no root protocol")]
     MissingRoot,
@@ -91,7 +91,7 @@ where
 
     let packet_len = packet.packet_len().unwrap_or(data.len());
 
-    if header_len > packet_len || packet_len < data.len() {
+    if header_len > packet_len || packet_len > data.len() {
         return Err(ParseError::InvalidValue);
     }
 
@@ -111,6 +111,7 @@ where
     fmt::Display::fmt(packet, f)
 }
 
+#[derive(Debug)]
 pub struct ParseMeta {
     pub header_len: usize,
     pub packet_len: usize,
@@ -119,8 +120,8 @@ pub struct ParseMeta {
 
 #[derive(Debug, Clone)]
 pub(crate) struct PendingProtocol {
+    pub name: &'static str,
     pub type_id: TypeId,
-    pub name: String,
     pub parent: Option<TypeId>,
     pub selector: ProtocolKey,
     pub parse_fn: ParseFn,
@@ -142,18 +143,20 @@ impl ProtocolRegistryBuilder {
         }
     }
 
+    #[must_use]
     pub fn new_with_root<P>() -> Self
     where
         P: Packet + fmt::Display,
     {
-        if P::parent_type_id().is_some() {
-            panic!("Root protocol cannot have a parent protocol")
-        }
+        assert!(
+            P::parent_type_id().is_none(),
+            "Root protocol cannot have a parent protocol"
+        );
 
         Self {
             root: Some(PendingProtocol {
                 type_id: TypeId::of::<P>(),
-                name: type_name::<P>().to_owned(),
+                name: type_name::<P>(),
                 parent: P::parent_type_id(),
                 selector: ProtocolKey(P::SELECTOR),
                 parse_fn: parse_protocol::<P>,
@@ -167,15 +170,16 @@ impl ProtocolRegistryBuilder {
     where
         P: Packet + fmt::Display,
     {
-        if P::parent_type_id().is_some() {
-            panic!("Root protocol cannot have a parent protocol")
-        }
+        assert!(
+            P::parent_type_id().is_none(),
+            "Root protocol cannot have a parent protocol"
+        );
 
         self.protocols.insert(
             0,
             PendingProtocol {
                 type_id: TypeId::of::<P>(),
-                name: type_name::<P>().to_owned(),
+                name: type_name::<P>(),
                 parent: P::parent_type_id(),
                 selector: ProtocolKey(P::SELECTOR),
                 parse_fn: parse_protocol::<P>,
@@ -190,13 +194,14 @@ impl ProtocolRegistryBuilder {
     where
         P: Packet + fmt::Display,
     {
-        if P::parent_type_id().is_none() {
-            panic!("Protocol must have a parent protocol.")
-        }
+        assert!(
+            P::parent_type_id().is_some(),
+            "Protocol must have a parent protocol."
+        );
 
         self.protocols.push(PendingProtocol {
             type_id: TypeId::of::<P>(),
-            name: type_name::<P>().to_owned(),
+            name: type_name::<P>(),
             parent: P::parent_type_id(),
             selector: ProtocolKey(P::SELECTOR),
             parse_fn: parse_protocol::<P>,
@@ -218,10 +223,31 @@ impl ProtocolRegistryBuilder {
             .register::<UDPFrame>()
     }
 
+    /// Builds a [`ProtocolRegistry`] from the protocols registred to this builder.
+    ///
+    /// Each pedding protocol is assigned a [`ProtocolId`] based on its position
+    /// (the root, if set, always gets ID 0), and converted into a
+    /// [`ProtocolDescriptor`]. Child protocols are linked to thier parent through
+    /// routes, which are grouped by parent and sorted by selector.
+    ///
+    /// # Errors
+    ///
+    /// Returns a [`RegistryError`] if the protocol graph is invalid:
+    /// - [`RegistryError::TooManyProtocols`] if there are more than
+    ///   [`u16::MAX`] protocols.
+    /// - [`RegistryError::DuplicateProtocol`] if two protocols share the same
+    ///   `type_id`.
+    /// - [`RegistryError::MissingParent`] if a protocol names a parent that was
+    ///   never registred.
+    /// - [`RegistryError::DuplicateRoute`] if two children of the same parent
+    ///   use the same selector.
+    /// - [`RegistryError::MultipleRoots`] if more than one protocol has no
+    ///   parent.
+    /// - [`RegistryError::MissingRoot`] if no protocol is a root.
     pub fn build(&mut self) -> Result<ProtocolRegistry, RegistryError> {
         if self.protocols.len() > u16::MAX as usize {
             return Err(RegistryError::TooManyProtocols {
-                max: u16::MAX as usize,
+                max: usize::from(u16::MAX),
             });
         }
 
@@ -232,10 +258,12 @@ impl ProtocolRegistryBuilder {
         }
 
         for (index, protocol) in self.protocols.iter().enumerate() {
+            // The length was checked against `u16::MAX` above, so this cannot truncate.
+            #[allow(clippy::cast_possible_truncation)]
             let id = ProtocolId(index as u16);
 
             if ids.insert(protocol.type_id, id).is_some() {
-                return Err(RegistryError::DuplicateProtocol(protocol.name.clone()));
+                return Err(RegistryError::DuplicateProtocol(protocol.name));
             }
         }
 
@@ -245,6 +273,8 @@ impl ProtocolRegistryBuilder {
         let mut root = None;
 
         for (index, protocol) in self.protocols.iter().enumerate() {
+            // The length was checked against `u16::MAX` above, so this cannot truncate.
+            #[allow(clippy::cast_possible_truncation)]
             let child_id = ProtocolId(index as u16);
 
             match protocol.parent {
@@ -258,7 +288,7 @@ impl ProtocolRegistryBuilder {
                 Some(parent_type_id) => {
                     let parent_id = *ids
                         .get(&parent_type_id)
-                        .ok_or(RegistryError::MissingParent(protocol.name.to_owned()))?;
+                        .ok_or(RegistryError::MissingParent(protocol.name))?;
 
                     let routes = &mut routes_by_parent[parent_id.index()];
 
@@ -302,6 +332,7 @@ impl ProtocolRegistryBuilder {
             routes.extend_from_slice(protocol_routes);
 
             descriptors.push(ProtocolDescriptor {
+                name: pending.name,
                 type_id: pending.type_id,
                 parse: pending.parse_fn,
                 format: pending.format_fn,
@@ -332,7 +363,8 @@ pub(crate) struct Route {
 
 // Protocol Descriptor
 #[derive(Debug, Clone, Copy)]
-pub(crate) struct ProtocolDescriptor {
+pub struct ProtocolDescriptor {
+    pub name: &'static str,
     pub type_id: TypeId,
     pub parse: ParseFn,
     pub format: FormatFn,
@@ -354,6 +386,7 @@ impl ProtocolRegistry {
         ProtocolRegistryBuilder::new()
     }
 
+    #[must_use]
     #[inline]
     pub fn root(&self) -> ProtocolId {
         self.root
@@ -364,6 +397,7 @@ impl ProtocolRegistry {
         self.protocols.get(id.index())
     }
 
+    #[must_use]
     #[inline]
     pub fn resolve(&self, parent: ProtocolId, selector: ProtocolKey) -> Option<ProtocolId> {
         let descriptor = self.protocol(parent)?;

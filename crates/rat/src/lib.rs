@@ -1,11 +1,27 @@
 pub mod addrs;
 pub mod capture;
+pub mod error;
+pub mod interface;
 mod io;
 pub mod packet;
 pub mod parser;
 pub mod protocols;
 pub mod registry;
-pub mod utils;
+mod thread_pool;
+mod utils;
+
+#[doc(inline)]
+pub use crate::addrs::{IPv4Addr, IPv6Addr, MacAddr, SockAddr};
+#[doc(inline)]
+pub use crate::capture::{Capture, CaptureBatch};
+#[doc(inline)]
+pub use crate::interface::{IFace, IFaceMap, IFaceReq};
+#[doc(inline)]
+pub use crate::packet::Packet;
+#[doc(inline)]
+pub use crate::parser::{ParsedLayer, Parser};
+#[doc(inline)]
+pub use crate::registry::{ProtocolRegistry, ProtocolRegistryBuilder};
 
 #[cfg(test)]
 mod tests {
