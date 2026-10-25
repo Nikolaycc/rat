@@ -1,5 +1,6 @@
-// reference: https://github.com/rust-lang/socket2/blob/master/src/sys/unix.rs#L346
 /// Helper macro to execute a system call that returns an `io::Result`.
+///
+/// reference: https://github.com/rust-lang/socket2/blob/master/src/sys/unix.rs#L346
 ///
 /// # Safety
 ///

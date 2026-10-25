@@ -232,6 +232,16 @@ pub fn packet(attr: TokenStream, item: TokenStream) -> TokenStream {
                 Ok(())
             }
         }
+
+        impl ::rat::display::DisplayGPUI
+        for #struct_ident
+        {
+            fn as_packet_view(&self)
+            -> ::rat::display::PacketView
+            {
+
+            }
+        }
     };
 
     expanded.into()

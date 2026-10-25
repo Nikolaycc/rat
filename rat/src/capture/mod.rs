@@ -6,6 +6,11 @@ use std::io::Read;
 use std::marker::PhantomData;
 use std::os::fd::AsRawFd;
 use std::sync::Arc;
+use std::sync::atomic::AtomicUsize;
+use std::sync::atomic::Ordering;
+use std::time::Duration;
+use std::time::SystemTime;
+use std::time::UNIX_EPOCH;
 
 use crate::capture::bpf::BPFFrame;
 use crate::capture::bpf::open_bpf_device;
@@ -22,20 +27,46 @@ pub mod parallel;
 
 pub type BufferPool = Arc<Pool<Box<[u8]>>>;
 
+pub(crate) fn allocate_new_id() -> usize {
+    static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
+    let mut id = NEXT_ID.load(Ordering::Relaxed);
+    loop {
+        assert!(id < usize::MAX, "too many IDs!");
+        match NEXT_ID.compare_exchange_weak(id, id + 1, Ordering::Relaxed, Ordering::Relaxed) {
+            Ok(_) => return id,
+            Err(v) => id = v,
+        }
+    }
+}
+
 #[derive(Debug)]
-pub struct RawPacket(pub Bytes);
+pub struct RawPacket {
+    pub no: usize,
+    pub timestamp: Duration,
+    bytes: Bytes,
+}
 
 impl RawPacket {
     #[must_use]
     #[inline]
+    pub fn new(data: Bytes) -> Self {
+        Self {
+            no: allocate_new_id(),
+            timestamp: SystemTime::now().duration_since(UNIX_EPOCH).unwrap(),
+            bytes: data,
+        }
+    }
+
+    #[must_use]
+    #[inline]
     pub fn data(&self) -> &[u8] {
-        &self.0
+        &self.bytes
     }
 
     #[must_use]
     #[inline]
     pub fn bytes(&self) -> Bytes {
-        self.0.clone()
+        self.bytes.clone()
     }
 }
 
@@ -96,7 +127,7 @@ impl Iterator for CaptureIter {
             .checked_add(record_len)
             .unwrap_or(self.data.len());
 
-        Some(RawPacket(packet))
+        Some(RawPacket::new(packet))
     }
 }
 

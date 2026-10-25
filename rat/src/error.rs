@@ -18,10 +18,13 @@ pub enum ParseError {
     InvalidAlignment,
 }
 
-#[derive(Error, Debug, PartialEq)]
+#[derive(Error, Debug)]
 pub enum PoolCreationError {
     #[error("size can't be zero")]
     ZeroSize,
+
+    #[error("failed to create worker")]
+    WorkerCreation(#[from] std::io::Error),
 }
 
 #[derive(Debug, Error)]
@@ -31,4 +34,7 @@ pub enum CaptureLoopError {
 
     #[error("pool are out of sync")]
     PoolFailed,
+
+    #[error("io")]
+    IO(#[from] std::io::Error),
 }

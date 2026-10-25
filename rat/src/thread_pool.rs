@@ -1,4 +1,5 @@
 use std::{
+    io,
     sync::{Arc, Mutex, mpsc},
     thread,
 };
@@ -14,29 +15,28 @@ pub struct Worker {
 }
 
 impl Worker {
-    pub fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Job>>>) -> Self {
-        let thread = thread::spawn(move || {
+    pub fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Job>>>) -> io::Result<Self> {
+        let thd = thread::Builder::new().name(format!("capture_worker_{id}"));
+
+        let thread = thd.spawn(move || {
             loop {
                 let message = receiver.lock().unwrap().recv();
 
-                match message {
-                    Ok(job) => {
-                        println!("Worker {id} got a job; executing.");
+                if let Ok(job) = message {
+                    println!("Worker {id} got a job; executing.");
 
-                        job();
-                    }
-                    Err(_) => {
-                        println!("Worker {id} disconnected; shutting down.");
-                        break;
-                    }
+                    job();
+                } else {
+                    println!("Worker {id} disconnected; shutting down.");
+                    break;
                 }
             }
-        });
+        })?;
 
-        Worker {
+        Ok(Worker {
             id,
             thread: Some(thread),
-        }
+        })
     }
 }
 
@@ -65,7 +65,7 @@ impl ThreadPool {
         let mut workers = Vec::with_capacity(size);
 
         for id in 0..size {
-            workers.push(Worker::new(id, Arc::clone(&receiver)));
+            workers.push(Worker::new(id, Arc::clone(&receiver))?);
         }
 
         Ok(ThreadPool {
@@ -83,7 +83,7 @@ impl ThreadPool {
     {
         let job = Box::new(f);
 
-        self.sender.as_ref().unwrap().send(job).unwrap()
+        self.sender.as_ref().unwrap().send(job).unwrap();
     }
 }
 
@@ -101,21 +101,16 @@ impl Drop for ThreadPool {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use crate::thread_pool::{PoolCreationError, ThreadPool};
+#[test]
+fn zero_size_pool() {
+    let err = ThreadPool::new(0).unwrap_err();
 
-    #[test]
-    fn zero_size_pool() {
-        let pool = ThreadPool::new(0).unwrap_err();
+    assert!(matches!(err, PoolCreationError::ZeroSize))
+}
 
-        assert_eq!(pool, PoolCreationError::ZeroSize)
-    }
+#[test]
+fn execute_thread() {
+    let pool = ThreadPool::new(5).unwrap();
 
-    #[test]
-    fn execute_thread() {
-        let pool = ThreadPool::new(5).unwrap();
-
-        pool.execute(|| {})
-    }
+    pool.execute(|| {})
 }

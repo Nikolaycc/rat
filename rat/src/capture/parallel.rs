@@ -1,4 +1,13 @@
-use std::{fs::File, io::Read, sync::Arc};
+use std::{
+    fs::File,
+    io::{self, Read},
+    panic::AssertUnwindSafe,
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    },
+    time::Duration,
+};
 
 use bytes::Bytes;
 use object_pool::{Pool, ReusableOwned};
@@ -38,6 +47,8 @@ pub struct ParallelCapture {
     buf_pool: BufferPool,
     thread_pool: ThreadPool,
     parser: Parser,
+    captured: usize,
+    running: AtomicBool,
 }
 
 impl ParallelCapture {
@@ -52,8 +63,10 @@ impl ParallelCapture {
             buf_pool: Arc::new(Pool::new(size, || {
                 vec![0u8; cap.buf_len].into_boxed_slice()
             })),
-            thread_pool: ThreadPool::new(size)?,
+            thread_pool: ThreadPool::new(size + 4)?,
             parser,
+            captured: 0,
+            running: AtomicBool::new(false),
         })
     }
 
@@ -63,22 +76,46 @@ impl ParallelCapture {
     {
         let parser = self.parser.clone();
         let callback = Arc::new(move |batch: ParallelBatch| callback(batch, &parser));
+        self.running.store(true, Ordering::Relaxed);
 
-        loop {
-            let mut buf = self
-                .buf_pool
-                .try_pull_owned()
-                .ok_or(CaptureLoopError::PoolFailed)?;
+        while self.running.load(Ordering::Relaxed) {
+            let mut attempt = 0u32;
+
+            let mut buf = loop {
+                if let Some(b) = self.buf_pool.try_pull_owned() {
+                    break b;
+                }
+
+                if !self.running.load(Ordering::Relaxed) {
+                    return Ok(());
+                }
+
+                match attempt {
+                    0..=10 => std::hint::spin_loop(),
+                    11..=20 => std::thread::yield_now(),
+                    _ => std::thread::sleep(Duration::from_micros(50)),
+                }
+
+                attempt += 1;
+            };
 
             let size = match self.fd.read(&mut buf[..]) {
-                Ok(n) => n,
-                Err(_) => break,
+                Ok(0) => continue,
+                Ok(n) => {
+                    self.captured += 1;
+                    n
+                }
+                Err(e) if e.kind() == io::ErrorKind::Interrupted => continue,
+                Err(e) if e.kind() == io::ErrorKind::TimedOut => continue, // lets you re-check `running`
+                Err(e) => return Err(CaptureLoopError::IO(e)),
             };
 
             let cb = Arc::clone(&callback);
 
             self.thread_pool.execute(move || {
-                cb(ParallelBatch { buf, len: size });
+                let _ = std::panic::catch_unwind(AssertUnwindSafe(|| {
+                    cb(ParallelBatch { buf, len: size });
+                }));
             });
         }
 

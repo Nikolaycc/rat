@@ -2,7 +2,6 @@ use rat::capture::Capture;
 use rat::capture::parallel::ParallelCapture;
 use rat::interface::IFaceMap;
 use rat::parser::Parser;
-use rat::protocols::tcp::TCPFrame;
 use rat::registry::ProtocolRegistry;
 
 use clap::Parser as ClapParser;
@@ -44,10 +43,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     parallel.run_loop(|batch, parser| {
         for raw in batch {
+            println!("Meta Data \n  ID: {}, Time: {:?}", raw.no, raw.timestamp);
             for layer in parser.parse(raw.bytes()) {
                 let Ok(layer) = layer else { continue };
 
-                print!("{layer}");
+                println!("{layer}");
             }
         }
     })?;

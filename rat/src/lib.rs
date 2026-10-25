@@ -1,5 +1,6 @@
 pub mod addrs;
 pub mod capture;
+pub mod display;
 pub mod error;
 pub mod interface;
 mod io;
@@ -24,7 +25,7 @@ pub use crate::parser::{ParsedLayer, Parser};
 pub use crate::registry::{ProtocolRegistry, ProtocolRegistryBuilder};
 
 #[cfg(test)]
-mod tests {
+mod rat_tests {
     use super::*;
 
     #[test]

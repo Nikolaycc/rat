@@ -1,8 +1,11 @@
 use std::fmt;
+use std::fmt::Display;
 use std::io;
 use std::net;
 use std::ptr;
 use zerocopy::{Immutable, KnownLayout, TryFromBytes, Unaligned};
+
+pub trait Addr: Display {}
 
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, Hash, TryFromBytes, Immutable, KnownLayout, Unaligned,
@@ -11,6 +14,8 @@ use zerocopy::{Immutable, KnownLayout, TryFromBytes, Unaligned};
 pub struct IPv6Addr {
     octets: [u8; 16],
 }
+
+impl Addr for IPv6Addr {}
 
 impl IPv6Addr {
     #[must_use]
@@ -33,6 +38,8 @@ impl fmt::Display for IPv6Addr {
 pub struct IPv4Addr {
     octets: [u8; 4],
 }
+
+impl Addr for IPv4Addr {}
 
 impl IPv4Addr {
     #[must_use]
@@ -69,6 +76,8 @@ impl fmt::Display for IPv4Addr {
 pub struct MacAddr {
     octets: [u8; 6],
 }
+
+impl Addr for MacAddr {}
 
 impl MacAddr {
     /// Creates a new `MacAddr` struct from the given bytes.

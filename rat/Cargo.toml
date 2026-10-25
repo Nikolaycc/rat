@@ -2,6 +2,7 @@
 name = "rat"
 version = "0.1.0"
 edition = "2024"
+description = ""
 
 [features]
 default = ["experimental"]
@@ -16,6 +17,7 @@ zerocopy = { workspace = true }
 rat_derive = { workspace = true }
 thiserror = "2.0.20"
 object-pool = "0.6.0"
+gpui-pre-shared-string = "0.3.9"
 
 [lints]
 workspace = true

@@ -413,7 +413,7 @@ impl ProtocolRegistry {
 }
 
 #[cfg(test)]
-mod tests {
+mod registry_tests {
     use crate::protocols::{
         arp::ARPFrame, ethernet::EthernetFrame, ipv4::IPv4Frame, ipv6::IPv6Frame, tcp::TCPFrame,
     };

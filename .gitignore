@@ -6,5 +6,6 @@ obj/
 build/
 target/
 .cache/
+.zed/
 compile_commands.json
 **/.DS_Store
