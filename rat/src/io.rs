@@ -1,22 +1,12 @@
 use std::ffi::CString;
-use std::io::ErrorKind;
+use std::io::{self, ErrorKind};
 use std::os::fd::{AsFd, AsRawFd, FromRawFd, OwnedFd};
 use std::path::Path;
 
 use crate::utils::syscall;
 
-pub fn set_nonblocking<F>(fd: &F) -> std::io::Result<()>
-where
-    F: AsRawFd,
-{
-    let raw = fd.as_raw_fd();
-    let flags = syscall!(fcntl(raw, libc::F_GETFL))?;
-    let _res = syscall!(fcntl(raw, libc::F_SETFL, flags | libc::O_NONBLOCK))?;
-    Ok(())
-}
-
 #[allow(unused)]
-pub fn open<S>(path: &S, oflag: i32) -> std::io::Result<OwnedFd>
+pub fn open<S>(path: &S, oflag: i32) -> io::Result<OwnedFd>
 where
     S: AsRef<Path>,
 {
@@ -29,8 +19,7 @@ where
     syscall!(open(cpath.as_ptr(), oflag)).map(|fd| unsafe { OwnedFd::from_raw_fd(fd) })
 }
 
-#[allow(unused)]
-pub fn read<F>(fd: &F, buf: &mut [u8]) -> std::io::Result<usize>
+pub fn read<F>(fd: &F, buf: &mut [u8]) -> io::Result<usize>
 where
     F: AsRawFd + AsFd,
 {

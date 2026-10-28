@@ -1,6 +1,5 @@
 use std::{
-    fs::File,
-    io::{self, Read},
+    io,
     panic::AssertUnwindSafe,
     sync::{
         Arc,
@@ -16,6 +15,7 @@ use crate::{
     Capture, Parser,
     capture::{BufferPool, CaptureIter, RawPacket},
     error::{CaptureLoopError, PoolCreationError},
+    sys,
     thread_pool::ThreadPool,
 };
 
@@ -43,7 +43,7 @@ impl IntoIterator for ParallelBatch {
 }
 
 pub struct ParallelCapture {
-    fd: File,
+    device: sys::Device,
     buf_pool: BufferPool,
     thread_pool: ThreadPool,
     parser: Parser,
@@ -55,7 +55,7 @@ impl ParallelCapture {
     #[inline]
     pub fn from(cap: Capture, parser: Parser, size: usize) -> Result<Self, PoolCreationError> {
         Ok(Self {
-            fd: cap.fd,
+            device: cap.device,
             buf_pool: Arc::new(Pool::new(size, || {
                 vec![0u8; cap.buf_len].into_boxed_slice()
             })),
@@ -95,7 +95,7 @@ impl ParallelCapture {
                 attempt += 1;
             };
 
-            let size = match self.fd.read(&mut buf[..]) {
+            let size = match self.device.read(&mut buf[..]) {
                 Ok(0) => continue,
                 Ok(n) => {
                     self.captured += 1;

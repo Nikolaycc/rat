@@ -1,10 +1,6 @@
 use bytes::Bytes;
 use object_pool::{Pool, ReusableOwned};
-use std::{
-    fs::File,
-    io::{self, Read},
-    sync::Arc,
-};
+use std::{io, sync::Arc};
 use thiserror::Error;
 use tokio::{
     io::{Interest, unix::AsyncFd},
@@ -14,8 +10,8 @@ use tokio::{
 
 use crate::{
     capture::{BufferPool, Capture, CaptureIter, RawPacket},
-    io::set_nonblocking,
     parser::Parser,
+    sys,
 };
 
 const DEFAULT_MAX_WORKER: usize = 4;
@@ -39,7 +35,7 @@ pub struct AsyncBatch {
 }
 
 pub struct AsyncCapture {
-    fd: AsyncFd<File>,
+    fd: AsyncFd<sys::Device>,
     pool: BufferPool,
     available: Arc<Semaphore>,
 }
@@ -57,9 +53,9 @@ impl AsyncCapture {
     }
 
     pub fn with_workers(cap: Capture, workers: usize) -> io::Result<Self> {
-        set_nonblocking(&cap.fd)?;
+        cap.set_nonblocking(true)?;
 
-        let fd = AsyncFd::with_interest(cap.fd, Interest::READABLE)?;
+        let fd = AsyncFd::with_interest(cap.device, Interest::READABLE)?;
 
         Ok(Self {
             fd,

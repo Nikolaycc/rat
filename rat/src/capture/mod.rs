@@ -1,19 +1,17 @@
 use bytes::{Bytes, BytesMut};
 use libc::{BIOCGBLEN, BIOCIMMEDIATE, BIOCSETIF};
 use object_pool::Pool;
-use std::fs::File;
-use std::io::Read;
+use std::io;
 use std::os::fd::AsRawFd;
 use std::sync::Arc;
 
-use crate::capture::bpf::BPFFrame;
-use crate::capture::bpf::bpf_wordalign;
-use crate::capture::bpf::open_bpf_device;
 use crate::capture::tokio::AsyncCapture;
 use crate::interface::IFace;
+use crate::sys::{
+    self,
+    bpf::{Bpf, bpf_wordalign},
+};
 use crate::utils::syscall;
-
-pub mod bpf;
 
 #[cfg(feature = "experimental")]
 pub mod tokio;
@@ -64,16 +62,15 @@ impl Iterator for CaptureIter {
     fn next(&mut self) -> Option<Self::Item> {
         let remaining = self.data.len().checked_sub(self.offset)?;
 
-        if remaining < size_of::<BPFFrame>() {
+        if remaining < size_of::<Bpf>() {
             return None;
         }
 
-        let (hdr, _) = BPFFrame::parse(&self.data[self.offset..]).ok()?;
-
+        let (hdr, _) = Bpf::parse(&self.data[self.offset..]).ok()?;
         let header_len = hdr.bh_hdrlen.get() as usize;
         let captured_len = hdr.bh_caplen.get() as usize;
 
-        if header_len < size_of::<BPFFrame>() {
+        if header_len < size_of::<Bpf>() {
             return None;
         }
 
@@ -101,7 +98,7 @@ impl Iterator for CaptureIter {
 }
 
 pub struct Capture {
-    pub(crate) fd: File,
+    pub(crate) device: sys::Device,
     buf: BytesMut,
     pub(crate) buf_len: usize,
     interface: IFace,
@@ -128,11 +125,12 @@ impl Capture {
     ///   found [`std::io::ErrorKind::NotFound`].
     /// - Any of the `ioctl` calls that bind the device to the interface, read
     ///   the buffer size, or enable immediate mode fails.
-    pub fn open(ifname: &str) -> std::io::Result<Self> {
-        let fd = open_bpf_device()?;
+    pub fn open(ifname: &str) -> io::Result<Self> {
+        // let fd = open_bpf_device()?;
         // let fd: OwnedFd = fd.into();
+        let device = sys::Device::open()?;
 
-        let raw_fd = fd.as_raw_fd();
+        let raw_fd = device.as_raw_fd();
 
         let interface = IFace::lookup(ifname)?;
 
@@ -146,29 +144,34 @@ impl Capture {
         syscall!(ioctl(raw_fd, BIOCIMMEDIATE, &enable))?;
 
         Ok(Capture {
-            fd,
+            device,
             buf: BytesMut::zeroed(buf_len as usize),
             buf_len: buf_len as usize,
             interface,
         })
     }
 
-    pub fn set_interface(&mut self, interface: IFace) -> std::io::Result<()> {
+    #[inline]
+    pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
+        self.device.set_nonblocking(nonblocking)
+    }
+
+    pub fn set_interface(&mut self, interface: IFace) -> io::Result<()> {
         let mut ifreq = interface.to_interface_req()?;
-        syscall!(ioctl(self.fd.as_raw_fd(), BIOCSETIF, &mut ifreq.0)).map(|_| {
+        syscall!(ioctl(self.device.as_raw_fd(), BIOCSETIF, &mut ifreq.0)).map(|_| {
             self.interface = interface;
         })
     }
 
     #[inline]
-    pub fn set_interface_with_name(&mut self, name: &str) -> std::io::Result<()> {
+    pub fn set_interface_by_name(&mut self, name: &str) -> io::Result<()> {
         let interface = IFace::lookup(name)?;
 
         self.set_interface(interface)
     }
 
     #[inline]
-    pub fn as_async(self) -> std::io::Result<AsyncCapture> {
+    pub fn as_async(self) -> io::Result<AsyncCapture> {
         AsyncCapture::from(self)
     }
 }
@@ -179,7 +182,7 @@ impl Iterator for Capture {
     fn next(&mut self) -> Option<Self::Item> {
         self.buf.fill(0);
 
-        let _size = match self.fd.read(&mut self.buf) {
+        let _size = match self.device.read(&mut self.buf) {
             Err(why) => panic!("couldn't read {why}"),
             Ok(size) => size,
         };
