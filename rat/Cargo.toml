@@ -17,7 +17,7 @@ zerocopy = { workspace = true }
 rat_derive = { workspace = true }
 thiserror = "2.0.20"
 object-pool = "0.6.0"
-gpui-pre-shared-string = "0.3.9"
+# gpui-pre-shared-string = "0.3.9"
 
 [lints]
 workspace = true

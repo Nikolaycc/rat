@@ -14,7 +14,7 @@ use object_pool::{Pool, ReusableOwned};
 
 use crate::{
     Capture, Parser,
-    capture::{Active, BufferPool, CaptureIter, RawPacket},
+    capture::{BufferPool, CaptureIter, RawPacket},
     error::{CaptureLoopError, PoolCreationError},
     thread_pool::ThreadPool,
 };
@@ -53,11 +53,7 @@ pub struct ParallelCapture {
 
 impl ParallelCapture {
     #[inline]
-    pub fn from(
-        cap: Capture<Active>,
-        parser: Parser,
-        size: usize,
-    ) -> Result<Self, PoolCreationError> {
+    pub fn from(cap: Capture, parser: Parser, size: usize) -> Result<Self, PoolCreationError> {
         Ok(Self {
             fd: cap.fd,
             buf_pool: Arc::new(Pool::new(size, || {

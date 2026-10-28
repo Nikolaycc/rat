@@ -5075,7 +5075,6 @@ name = "rat"
 version = "0.1.0"
 dependencies = [
  "bytes",
- "gpui-pre-shared-string",
  "libc",
  "object-pool",
  "rat_derive",

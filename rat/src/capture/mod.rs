@@ -3,16 +3,11 @@ use libc::{BIOCGBLEN, BIOCIMMEDIATE, BIOCSETIF};
 use object_pool::Pool;
 use std::fs::File;
 use std::io::Read;
-use std::marker::PhantomData;
 use std::os::fd::AsRawFd;
 use std::sync::Arc;
-use std::sync::atomic::AtomicUsize;
-use std::sync::atomic::Ordering;
-use std::time::Duration;
-use std::time::SystemTime;
-use std::time::UNIX_EPOCH;
 
 use crate::capture::bpf::BPFFrame;
+use crate::capture::bpf::bpf_wordalign;
 use crate::capture::bpf::open_bpf_device;
 use crate::capture::tokio::AsyncCapture;
 use crate::interface::IFace;
@@ -27,46 +22,20 @@ pub mod parallel;
 
 pub type BufferPool = Arc<Pool<Box<[u8]>>>;
 
-pub(crate) fn allocate_new_id() -> usize {
-    static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
-    let mut id = NEXT_ID.load(Ordering::Relaxed);
-    loop {
-        assert!(id < usize::MAX, "too many IDs!");
-        match NEXT_ID.compare_exchange_weak(id, id + 1, Ordering::Relaxed, Ordering::Relaxed) {
-            Ok(_) => return id,
-            Err(v) => id = v,
-        }
-    }
-}
-
 #[derive(Debug)]
-pub struct RawPacket {
-    pub no: usize,
-    pub timestamp: Duration,
-    bytes: Bytes,
-}
+pub struct RawPacket(Bytes);
 
 impl RawPacket {
     #[must_use]
     #[inline]
-    pub fn new(data: Bytes) -> Self {
-        Self {
-            no: allocate_new_id(),
-            timestamp: SystemTime::now().duration_since(UNIX_EPOCH).unwrap(),
-            bytes: data,
-        }
-    }
-
-    #[must_use]
-    #[inline]
     pub fn data(&self) -> &[u8] {
-        &self.bytes
+        &self.0
     }
 
     #[must_use]
     #[inline]
     pub fn bytes(&self) -> Bytes {
-        self.bytes.clone()
+        Bytes::clone(&self.0)
     }
 }
 
@@ -127,27 +96,18 @@ impl Iterator for CaptureIter {
             .checked_add(record_len)
             .unwrap_or(self.data.len());
 
-        Some(RawPacket::new(packet))
+        Some(RawPacket(packet))
     }
 }
 
-pub trait State {}
-
-pub struct Active;
-pub struct Inactive;
-
-impl State for Active {}
-impl State for Inactive {}
-
-pub struct Capture<S: State> {
+pub struct Capture {
     pub(crate) fd: File,
     buf: BytesMut,
     pub(crate) buf_len: usize,
     interface: IFace,
-    _p: PhantomData<S>,
 }
 
-impl Capture<Inactive> {
+impl Capture {
     /// Opens a BPF device and start capturing packets on `ifname`
     ///
     /// Opens `/dev/bpf0`, binds it to the interface, and enables immediate
@@ -168,7 +128,7 @@ impl Capture<Inactive> {
     ///   found [`std::io::ErrorKind::NotFound`].
     /// - Any of the `ioctl` calls that bind the device to the interface, read
     ///   the buffer size, or enable immediate mode fails.
-    pub fn open(ifname: &str) -> std::io::Result<Capture<Active>> {
+    pub fn open(ifname: &str) -> std::io::Result<Self> {
         let fd = open_bpf_device()?;
         // let fd: OwnedFd = fd.into();
 
@@ -190,12 +150,9 @@ impl Capture<Inactive> {
             buf: BytesMut::zeroed(buf_len as usize),
             buf_len: buf_len as usize,
             interface,
-            _p: PhantomData,
         })
     }
-}
 
-impl Capture<Active> {
     pub fn set_interface(&mut self, interface: IFace) -> std::io::Result<()> {
         let mut ifreq = interface.to_interface_req()?;
         syscall!(ioctl(self.fd.as_raw_fd(), BIOCSETIF, &mut ifreq.0)).map(|_| {
@@ -216,7 +173,7 @@ impl Capture<Active> {
     }
 }
 
-impl Iterator for Capture<Active> {
+impl Iterator for Capture {
     type Item = CaptureBatch;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -231,10 +188,4 @@ impl Iterator for Capture<Active> {
 
         Some(CaptureBatch(buf))
     }
-}
-
-#[inline]
-pub(in crate::capture) const fn bpf_wordalign(length: usize) -> usize {
-    let alignment = libc::BPF_ALIGNMENT as usize;
-    (length + alignment - 1) & !(alignment - 1)
 }

@@ -43,7 +43,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     parallel.run_loop(|batch, parser| {
         for raw in batch {
-            println!("Meta Data \n  ID: {}, Time: {:?}", raw.no, raw.timestamp);
             for layer in parser.parse(raw.bytes()) {
                 let Ok(layer) = layer else { continue };
 

@@ -4,23 +4,44 @@ use std::{
 };
 
 use zerocopy::{
-    Immutable, KnownLayout, TryFromBytes,
-    native_endian::{I32, U16, U32},
+    FromBytes, Immutable, KnownLayout,
+    native_endian::{U16, U32},
 };
 
 use crate::error::ParseError;
 
-#[derive(Debug, PartialEq, Eq, TryFromBytes, Immutable, KnownLayout)]
+#[cfg(any(target_os = "macos", target_os = "ios"))]
+type Time = zerocopy::native_endian::I32;
+
+#[cfg(target_os = "openbsd")]
+type Time = zerocopy::native_endian::U32;
+
+#[cfg(all(
+    any(target_os = "freebsd", target_os = "netbsd", target_os = "dragonfly"),
+    target_pointer_width = "64"
+))]
+type Time = zerocopy::native_endian::I64;
+
+#[cfg(all(
+    any(target_os = "freebsd", target_os = "netbsd", target_os = "dragonfly"),
+    target_pointer_width = "32"
+))]
+type Time = zerocopy::native_endian::I32;
+
+// FIXME: potential bug
+#[derive(Debug, PartialEq, Eq, FromBytes, Immutable, KnownLayout)]
 #[repr(C)]
-pub struct TimeVal32 {
-    pub tv_sec: I32,
-    pub tv_usec: I32,
+pub struct TimeVal {
+    pub tv_sec: Time,
+    pub tv_usec: Time,
 }
 
-#[derive(Debug, PartialEq, Eq, TryFromBytes, Immutable, KnownLayout)]
+#[derive(Debug, PartialEq, Eq, FromBytes, Immutable, KnownLayout)]
 #[repr(C)]
 pub struct BPFFrame {
-    pub bh_tstamp: TimeVal32,
+    // FIXME: potential bug
+    pub bh_tstamp: TimeVal,
+
     pub bh_caplen: U32,
     pub bh_datalen: U32,
     pub bh_hdrlen: U16,
@@ -38,7 +59,7 @@ impl BPFFrame {
     /// Returns an [`ParseError::InvalidValue`] if `frame` is too short to hold a
     /// [`BPFFrame`], or if its bytes are not a valid [`BPFFrame`].
     pub fn parse(frame: &[u8]) -> Result<(&Self, &[u8]), ParseError> {
-        Self::try_ref_from_prefix(frame).map_err(|_| ParseError::InvalidValue)
+        Self::ref_from_prefix(frame).map_err(|_| ParseError::InvalidValue)
     }
 }
 
@@ -71,4 +92,10 @@ pub(crate) fn open_bpf_device() -> io::Result<File> {
         ErrorKind::NotFound,
         "no available /dev/bpf device",
     ))
+}
+
+#[inline]
+pub(crate) const fn bpf_wordalign(length: usize) -> usize {
+    let alignment = libc::BPF_ALIGNMENT as usize;
+    (length + alignment - 1) & !(alignment - 1)
 }

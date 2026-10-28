@@ -1,6 +1,5 @@
 pub mod addrs;
 pub mod capture;
-pub mod display;
 pub mod error;
 pub mod interface;
 mod io;
