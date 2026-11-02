@@ -4807,6 +4807,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e8cf8e6a8aa66ce33f63993ffc4ea4271eb5b0530a9002db8455ea6050c77bfa"
 
 [[package]]
+name = "pretty-hex"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9a65843dfefbafd3c879c683306959a6de478443ffe9c9adf02f5976432402d7"
+
+[[package]]
 name = "proc-macro-crate"
 version = "3.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5098,9 +5104,11 @@ dependencies = [
 name = "rathole"
 version = "0.1.0"
 dependencies = [
+ "async-channel",
  "gpui-kit",
  "gpui-pre",
  "gpui-pre-platform",
+ "pretty-hex",
  "rand 0.9.5",
  "rat",
 ]

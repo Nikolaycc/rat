@@ -60,3 +60,7 @@ Contributions are welcome! Please open an issue or submit a pull request.
 *   Add BPF filter support
 *   Add Linux compatibility
 *   Make packet capture fully zero-copy
+
+## License
+
+Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE).

@@ -3,6 +3,7 @@ name = "rat"
 version = "0.1.0"
 edition = "2024"
 description = ""
+license.workspace = true
 
 [features]
 default = ["experimental"]
