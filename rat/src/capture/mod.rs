@@ -6,7 +6,7 @@ use std::os::fd::AsRawFd;
 use std::sync::Arc;
 
 use crate::capture::tokio::AsyncCapture;
-use crate::interface::IFace;
+use crate::interface::Interface;
 use crate::sys::{
     self,
     bpf::{Bpf, bpf_wordalign},
@@ -101,7 +101,7 @@ pub struct Capture {
     pub(crate) device: sys::Device,
     buf: BytesMut,
     pub(crate) buf_len: usize,
-    interface: IFace,
+    interface: Interface,
 }
 
 impl Capture {
@@ -132,7 +132,7 @@ impl Capture {
 
         let raw_fd = device.as_raw_fd();
 
-        let interface = IFace::lookup(ifname)?;
+        let interface = Interface::lookup(ifname)?;
 
         let ifreq = interface.to_interface_req()?;
         syscall!(ioctl(raw_fd, BIOCSETIF, &ifreq.0))?;
@@ -156,7 +156,7 @@ impl Capture {
         self.device.set_nonblocking(nonblocking)
     }
 
-    pub fn set_interface(&mut self, interface: IFace) -> io::Result<()> {
+    pub fn set_interface(&mut self, interface: Interface) -> io::Result<()> {
         let mut ifreq = interface.to_interface_req()?;
         syscall!(ioctl(self.device.as_raw_fd(), BIOCSETIF, &mut ifreq.0)).map(|_| {
             self.interface = interface;
@@ -165,7 +165,7 @@ impl Capture {
 
     #[inline]
     pub fn set_interface_by_name(&mut self, name: &str) -> io::Result<()> {
-        let interface = IFace::lookup(name)?;
+        let interface = Interface::lookup(name)?;
 
         self.set_interface(interface)
     }

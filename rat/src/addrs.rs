@@ -5,7 +5,7 @@ use std::net;
 use std::ptr;
 use zerocopy::{Immutable, KnownLayout, TryFromBytes, Unaligned};
 
-pub trait Addr: Display {}
+pub trait Addr: Display + Send + Sync {}
 
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, Hash, TryFromBytes, Immutable, KnownLayout, Unaligned,
@@ -37,7 +37,7 @@ impl fmt::Display for IPv6Addr {
 #[repr(transparent)]
 pub struct IPv4Addr {
     octets: [u8; 4],
-}
+pf}
 
 impl Addr for IPv4Addr {}
 

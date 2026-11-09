@@ -16,7 +16,7 @@ pub use crate::addrs::{IPv4Addr, IPv6Addr, MacAddr, SockAddr};
 #[doc(inline)]
 pub use crate::capture::{Capture, CaptureBatch};
 #[doc(inline)]
-pub use crate::interface::{IFace, IFaceMap, IFaceReq};
+pub use crate::interface::{Interface, InterfaceMap, InterfaceReq};
 #[doc(inline)]
 pub use crate::packet::Packet;
 #[doc(inline)]

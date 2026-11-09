@@ -51,7 +51,7 @@ impl ThreadPool {
     ///
     /// The size is the number of threads in the pool.
     ///
-    /// #Errors
+    /// # Errors
     ///
     /// Will return 'Err' if the size is zero.
     pub fn new(size: usize) -> Result<Self, PoolCreationError> {

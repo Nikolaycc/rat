@@ -1,6 +1,6 @@
 use rat::capture::Capture;
 use rat::capture::parallel::ParallelCapture;
-use rat::interface::IFaceMap;
+use rat::interface::InterfaceMap;
 use rat::parser::Parser;
 use rat::registry::ProtocolRegistry;
 
@@ -28,7 +28,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
 
     if args.show_interfaces {
-        let ifaces = IFaceMap::new()?;
+        let ifaces = InterfaceMap::new()?;
         println!("{ifaces}");
 
         return Ok(());
